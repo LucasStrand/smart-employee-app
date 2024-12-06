@@ -1,5 +1,3 @@
-import logo from "@/assets/images/logga_png.png";
-import peopleTogether from "@/assets/images/people-together.png";
 import checklist from "@/assets/images/checklistimg.png";
 import arrowDown from "@/assets/icons/arrow-down.png";
 import arrowUp from "@/assets/icons/arrow-up.png";
@@ -35,6 +33,10 @@ import onboarding2 from "@/assets/images/onboarding2.png";
 import onboarding3 from "@/assets/images/onboarding3.png";
 import signUpCar from "@/assets/images/signup-car.png";
 
+import logo from "@/assets/images/logga_png.png";
+import peopleTogether from "@/assets/images/people-together.png";
+import SMFasad from "@/assets/images/smartteknik_fasad.png";
+
 export const images = {
   onboarding1,
   onboarding2,
@@ -44,6 +46,8 @@ export const images = {
   check,
   noResult,
   message,
+  logo,
+  SMFasad,
 };
 
 export const icons = {
@@ -89,8 +93,8 @@ export const onboarding = [
   },
   {
     id: 3,
-    title: "Checklistor som hjälper till",
-    description: "Och andra funktioner",
+    title: "Med funktioner som checklistor",
+    description: "Och annat som hjälper dig på jobbet",
     image: checklist,
   },
 ];
