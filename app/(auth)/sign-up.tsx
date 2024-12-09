@@ -3,6 +3,9 @@ import { View, ScrollView, Image, Text } from "react-native";
 import { images, icons } from "@/constants";
 import { useCallback, useState } from "react";
 import InputField from "@/components/InputField";
+import CustomButton from "@/components/CustomButton";
+import { Link } from "expo-router";
+import OAuth from "@/components/OAuth";
 
 const SignUp = () => {
   const [form, setForm] = useState({
@@ -10,13 +13,15 @@ const SignUp = () => {
     email: "",
     password: "",
   });
+
+  const onSignUpPress = async () => {};
   return (
     <ScrollView className="flex-1 bg-white">
       <View className="flex-1 bg-white">
         <View className="relative w-full h-[250px]">
           <Image source={images.SMFasad} className="z-0 w-full h-[250px]" />
-          <Text className="text-2xl text-black font-JakartaSemiBold absolute bottom-2 left-5">
-            Välkommen hit 👋
+          <Text className="text-2xl text-black font-JakartaSemiBold absolute bottom-5 left-5">
+            Skapa ett konto
           </Text>
         </View>
 
@@ -48,6 +53,22 @@ const SignUp = () => {
             onChangeText={(value) => setForm({ ...form, password: value })}
             inputStyle="placeholder:text-gray-400"
           />
+
+          <CustomButton
+            title="Skapa konto"
+            onPress={onSignUpPress}
+            className="mt-6"
+          />
+
+          <OAuth />
+
+          <Link
+            href="/sign-in"
+            className="text-lg text-center text-general-200 mt-10"
+          >
+            Har du redan ett konto?{" "}
+            <Text className="text-primary-500">Logga In</Text>
+          </Link>
         </View>
       </View>
     </ScrollView>
