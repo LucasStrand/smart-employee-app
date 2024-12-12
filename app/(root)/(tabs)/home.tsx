@@ -13,14 +13,6 @@ export default function Page() {
           <Text>Hello {user?.emailAddresses[0].emailAddress}</Text>
         </SafeAreaView>
       </SignedIn>
-      <SignedOut>
-        <Link href="/(auth)/sign-in">
-          <Text>Sign in</Text>
-        </Link>
-        <Link href="/(auth)/sign-up">
-          <Text>Sign up</Text>
-        </Link>
-      </SignedOut>
     </View>
   );
 }

@@ -8,6 +8,7 @@ import CustomButton from "@/components/CustomButton";
 import InputField from "@/components/InputField";
 import OAuth from "@/components/OAuth";
 import { icons, images } from "@/constants";
+import { fetchAPI } from "@/lib/fetch";
 
 const SignUp = () => {
   const { isLoaded, signUp, setActive } = useSignUp();
@@ -53,8 +54,15 @@ const SignUp = () => {
       });
 
       if (completeSignUp.status === "complete") {
+        await fetchAPI("/(api)/user", {
+          method: "POST",
+          body: JSON.stringify({
+            name: form.name,
+            email: form.email,
+            clerkId: completeSignUp.createdUserId,
+          }),
+        });
         await setActive({ session: completeSignUp.createdSessionId });
-        // Dismiss pending modal and show success modal
         setVerification({ ...verification, state: "success" });
       } else {
         console.log("Verification Incomplete:", completeSignUp);
@@ -73,13 +81,6 @@ const SignUp = () => {
       }));
     }
   };
-
-  // useEffect(() => {
-  //   console.log("Verification State:", verification.state);
-  //   if (verification.state === "success") {
-  //     setTimeout(() => setShowSuccessModal(true), 300); // Ensure modal rendering after animations.
-  //   }
-  // }, [verification.state]);
   useEffect(() => {
     console.log("Verification State:", verification.state);
   }, [verification.state]);
@@ -147,12 +148,12 @@ const SignUp = () => {
 
         <ReactNativeModal
           isVisible={verification.state === "pending"}
-          animationOutTiming={300} // Define animation timing
+          animationOutTiming={300}
           onModalHide={() => {
             if (verification.state === "success") {
               animationRef.current = setTimeout(() => {
                 setShowSuccessModal(true);
-              }, 300); // Wait for animation to fully end
+              }, 300);
             }
           }}
         >

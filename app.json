@@ -19,11 +19,16 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
+      "output": "server",
       "favicon": "./assets/images/logga_png.png"
     },
     "plugins": [
-      "expo-router",
+      [
+        "expo-router",
+        {
+          "origin": "htps://smartteknik.nu/"
+        }
+      ],
       [
         "expo-splash-screen",
         {
