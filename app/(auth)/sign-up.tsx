@@ -112,7 +112,7 @@ const SignUp = () => {
             placeholder="Skriv ditt namn"
             icon={icons.person}
             value={form.name}
-            onChangeText={(value) => setForm({ ...form, name: value })}
+            onChangeText={(value: string) => setForm({ ...form, name: value })}
           />
           <InputField
             label="E-post"
@@ -120,7 +120,7 @@ const SignUp = () => {
             icon={icons.email}
             textContentType="emailAddress"
             value={form.email}
-            onChangeText={(value) => setForm({ ...form, email: value })}
+            onChangeText={(value: string) => setForm({ ...form, email: value })}
           />
           <InputField
             label="Lösenord"
@@ -129,7 +129,9 @@ const SignUp = () => {
             secureTextEntry={true}
             textContentType="password"
             value={form.password}
-            onChangeText={(value) => setForm({ ...form, password: value })}
+            onChangeText={(value: string) =>
+              setForm({ ...form, password: value })
+            }
           />
           <CustomButton
             title="Skapa Konto"
@@ -170,7 +172,7 @@ const SignUp = () => {
               placeholder={"12345"}
               value={verification.code}
               keyboardType="numeric"
-              onChangeText={(code) =>
+              onChangeText={(code: string) =>
                 setVerification({ ...verification, code })
               }
             />

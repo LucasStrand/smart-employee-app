@@ -137,3 +137,10 @@ declare interface DriverCardProps {
   selected: number;
   setSelected: () => void;
 }
+
+declare interface ITodo {
+  id: string;
+  done: boolean;
+  text: string;
+  color: string;
+}
