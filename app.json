@@ -1,11 +1,11 @@
 {
   "expo": {
     "name": "smart-employee-app",
-    "slug": "smart-employee-app",
+    "slug": "g",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logga_png.png",
-    "scheme": "myapp",
+    "scheme": "smart-employee-app",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -15,7 +15,19 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/logga_png.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "smart-employee-app",
+              "host": "auth"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -26,7 +38,7 @@
       [
         "expo-router",
         {
-          "origin": "htps://smartteknik.nu/"
+          "origin": "https://smartteknik.nu/"
         }
       ],
       [

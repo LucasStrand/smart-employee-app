@@ -1,48 +1,77 @@
-import React from "react";
-import { View, ScrollView, Image, Text } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, ScrollView, Image, Text, Button, Alert } from "react-native";
+import { useRouter } from "expo-router";
+import * as AuthSession from "expo-auth-session";
 import { images, icons } from "@/constants";
-import { useCallback, useState } from "react";
 import InputField from "@/components/InputField";
 import CustomButton from "@/components/CustomButton";
-import { Link, useRouter } from "expo-router";
-import OAuth from "@/components/OAuth";
-import { useSignIn } from "@clerk/clerk-expo";
 
 const SignIn = () => {
-  const { signIn, setActive, isLoaded } = useSignIn();
   const router = useRouter();
 
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
+  // Azure AD Configuration
+  const CLIENT_ID = "25e06da5-7be9-41d6-b000-ffde4e36069a"; // Replace with your Azure AD app Client ID
+  const TENANT_ID = "efacdbb3-8b4e-4d16-8110-4bfb66410cd7"; // Replace with your Azure Tenant ID
+  const REDIRECT_URI = AuthSession.makeRedirectUri({
+    scheme: "exp",
   });
+  console.log("Redirect URI:", REDIRECT_URI);
+  const AUTHORITY = `https://login.microsoftonline.com/${TENANT_ID}`;
+  const AUTH_URL = `${AUTHORITY}/oauth2/v2.0/authorize`;
+  const TOKEN_URL = `${AUTHORITY}/oauth2/v2.0/token`;
 
-  const onSignInPress = useCallback(async () => {
-    if (!isLoaded) return;
+  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: CLIENT_ID,
+      redirectUri: REDIRECT_URI,
+      scopes: ["openid", "profile", "email"],
+      responseType: "code", // Use "code" explicitly for PKCE
+      codeChallengeMethod: "S256", // PKCE hashing method
+    },
+    {
+      authorizationEndpoint: AUTH_URL,
+      tokenEndpoint: TOKEN_URL,
+    }
+  );
 
-    // Start the sign-in process using the email and password provided
-    try {
-      const signInAttempt = await signIn.create({
-        identifier: form.email,
-        password: form.password,
+  const handleSignIn = async () => {
+    if (!request) return;
+
+    const result = await promptAsync();
+
+    if (result.type === "success") {
+      const tokenResponse = await fetch(TOKEN_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          client_id: CLIENT_ID,
+          scope: "openid profile email",
+          code: result.params.code, // Authorization code
+          redirect_uri: REDIRECT_URI,
+          grant_type: "authorization_code",
+          code_verifier: request.codeVerifier, // Dynamically include codeVerifier
+        }).toString(),
       });
 
-      // If sign-in process is complete, set the created session as active
-      // and redirect the user
-      if (signInAttempt.status === "complete") {
-        await setActive({ session: signInAttempt.createdSessionId });
-        router.replace("/");
+      const tokenData = await tokenResponse.json();
+      console.log("Token Data:", tokenData);
+
+      if (tokenData.error) {
+        Alert.alert("Authentication Failed", tokenData.error_description);
       } else {
-        // If the status isn't complete, check why. User might need to
-        // complete further steps.
-        console.error(JSON.stringify(signInAttempt, null, 2));
+        console.log("Access Token:", tokenData.access_token);
+        router.replace("/(root)/(tabs)/home");
       }
-    } catch (err) {
-      // See https://clerk.com/docs/custom-flows/error-handling
-      // for more info on error handling
-      console.error(JSON.stringify(err, null, 2));
+    } else {
+      Alert.alert("Authentication Canceled");
     }
-  }, [isLoaded, form.email, form.password]);
+  };
+
+  useEffect(() => {
+    if (response?.type === "success") {
+      console.log("Response:", response);
+    }
+  }, [response]);
 
   return (
     <ScrollView className="flex-1 bg-white">
@@ -55,41 +84,7 @@ const SignIn = () => {
         </View>
 
         <View className="p-5">
-          <InputField
-            label="E-post"
-            placeholder="Skriv din e-post"
-            icon={icons.email}
-            textContentType="emailAddress"
-            value={form.email}
-            onChangeText={(value) => setForm({ ...form, email: value })}
-            inputStyle="placeholder:text-gray-400"
-          />
-          <InputField
-            label="Lösenord"
-            placeholder="Skriv ditt lösenord"
-            icon={icons.lock}
-            secureTextEntry={true}
-            textContentType="password"
-            value={form.password}
-            onChangeText={(value) => setForm({ ...form, password: value })}
-            inputStyle="placeholder:text-gray-400"
-          />
-
-          <CustomButton
-            title="Skapa konto"
-            onPress={onSignInPress}
-            className="mt-6"
-          />
-
-          <OAuth />
-
-          <Link
-            href="/sign-up"
-            className="text-lg text-center text-general-200 mt-10"
-          >
-            Har du inte ett konto?{" "}
-            <Text className="text-primary-500">Skapa här</Text>
-          </Link>
+          <CustomButton title="Logga in med Microsoft" onPress={handleSignIn} />
         </View>
       </View>
     </ScrollView>
