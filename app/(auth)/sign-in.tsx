@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { View, ScrollView, Image, Text, Button, Alert } from "react-native";
+import React, { useEffect } from "react";
+import { View, ScrollView, Image, Text, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import * as AuthSession from "expo-auth-session";
-import { images, icons } from "@/constants";
-import InputField from "@/components/InputField";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { images } from "@/constants";
 import CustomButton from "@/components/CustomButton";
+import { fetchAPI } from "@/lib/fetch";
 
 const SignIn = () => {
   const router = useRouter();
@@ -15,7 +16,9 @@ const SignIn = () => {
   const REDIRECT_URI = AuthSession.makeRedirectUri({
     scheme: "exp",
   });
+
   console.log("Redirect URI:", REDIRECT_URI);
+
   const AUTHORITY = `https://login.microsoftonline.com/${TENANT_ID}`;
   const AUTH_URL = `${AUTHORITY}/oauth2/v2.0/authorize`;
   const TOKEN_URL = `${AUTHORITY}/oauth2/v2.0/token`;
@@ -24,9 +27,9 @@ const SignIn = () => {
     {
       clientId: CLIENT_ID,
       redirectUri: REDIRECT_URI,
-      scopes: ["openid", "profile", "email"],
-      responseType: "code", // Use "code" explicitly for PKCE
-      codeChallengeMethod: "S256", // PKCE hashing method
+      scopes: ["openid", "profile", "email", "User.Read"],
+      responseType: "code",
+      codeChallengeMethod: "S256",
     },
     {
       authorizationEndpoint: AUTH_URL,
@@ -40,27 +43,56 @@ const SignIn = () => {
     const result = await promptAsync();
 
     if (result.type === "success") {
-      const tokenResponse = await fetch(TOKEN_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          client_id: CLIENT_ID,
-          scope: "openid profile email",
-          code: result.params.code, // Authorization code
-          redirect_uri: REDIRECT_URI,
-          grant_type: "authorization_code",
-          code_verifier: request.codeVerifier, // Dynamically include codeVerifier
-        }).toString(),
-      });
+      try {
+        // Step 1: Exchange the code for a token
+        const tokenResponse = await fetch(TOKEN_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: CLIENT_ID,
+            scope: "openid profile email",
+            code: result.params.code,
+            redirect_uri: REDIRECT_URI,
+            grant_type: "authorization_code",
+            code_verifier: request.codeVerifier,
+          }).toString(),
+        });
 
-      const tokenData = await tokenResponse.json();
-      console.log("Token Data:", tokenData);
+        const tokenData = await tokenResponse.json();
 
-      if (tokenData.error) {
-        Alert.alert("Authentication Failed", tokenData.error_description);
-      } else {
-        console.log("Access Token:", tokenData.access_token);
+        if (tokenData.error) {
+          Alert.alert("Authentication Failed", tokenData.error_description);
+          return;
+        }
+
+        console.log("Token Data:", tokenData);
+
+        // Step 2: Decode the ID Token using atob()
+        const idToken = tokenData.id_token;
+        const decodedToken = JSON.parse(atob(idToken.split(".")[1]));
+        console.log("Decoded Token:", decodedToken);
+
+        // Step 3: Save the access token to AsyncStorage
+        await AsyncStorage.setItem("access_token", tokenData.access_token);
+
+        // Step 4: Send user data to the backend using fetchAPI
+        const response = await fetchAPI("/(api)/user", {
+          method: "POST",
+          body: JSON.stringify({
+            name: decodedToken.name || "Unknown User",
+            email: decodedToken.email || "No Email",
+            azureAdId: decodedToken.sub, // Azure AD user ID
+            role: "employee",
+          }),
+        });
+
+        console.log("User saved successfully:", response);
+
+        // Step 5: Navigate to the home screen
         router.replace("/(root)/(tabs)/home");
+      } catch (error) {
+        console.error("Error during sign-in:", error);
+        Alert.alert("Error", "Something went wrong during sign-in.");
       }
     } else {
       Alert.alert("Authentication Canceled");

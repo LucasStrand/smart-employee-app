@@ -2,8 +2,6 @@ import React from "react";
 import { FlatList, View, Text, Image, TouchableOpacity } from "react-native";
 import { ITodo } from "@/types/type";
 import Todo from "./Todo";
-import { useAuth, useUser } from "@clerk/clerk-expo";
-import { router } from "expo-router";
 
 import { icons } from "@/constants";
 interface ITodoListProps {
@@ -11,13 +9,6 @@ interface ITodoListProps {
 }
 
 const TodoList = (props: ITodoListProps) => {
-  const { user } = useUser();
-  const { signOut } = useAuth();
-
-  const handleSignOut = () => {
-    signOut();
-    router.replace("/(auth)/sign-in");
-  };
   return (
     <FlatList
       className="h-[500px] w-full flex flex-col p-2 overflow-scroll px-3"
