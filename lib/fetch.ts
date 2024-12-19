@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 export const fetchAPI = async (url: string, options?: RequestInit) => {
   try {
     const response = await fetch(url, options);
+
     if (!response.ok) {
       new Error(`HTTP error! status: ${response.status}`);
     }
@@ -38,3 +39,12 @@ export const useFetch = <T>(url: string, options?: RequestInit) => {
 
   return { data, loading, error, refetch: fetchData };
 };
+
+export async function fetchWorkOrders() {
+  // Replace this mock data with an API call when the real endpoint is available
+  return [
+    { id: "WO-001", name: "Work Order 1", description: "Fix plumbing" },
+    { id: "WO-002", name: "Work Order 2", description: "Repair HVAC" },
+    { id: "WO-003", name: "Work Order 3", description: "Electrical check" },
+  ];
+}
