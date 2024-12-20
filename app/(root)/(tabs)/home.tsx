@@ -71,15 +71,13 @@ export default function Home() {
   // Toggle todo completion
   const onToggle = async (todoId: string, completed: boolean) => {
     try {
-      const response = await fetchAPI(`/todos/${todoId}`, {
+      const response = await fetchAPI(`/todolist`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: todoId, completed }),
       });
 
-      console.log("PATCH Response:", response);
-
-      // Update local state
+      // Update state
       setTodoLists((prevLists) =>
         prevLists.map((list) => ({
           ...list,

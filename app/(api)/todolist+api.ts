@@ -104,6 +104,7 @@ export async function GET() {
 // PATCH: Update a single todo's completed status
 export async function PATCH(request: Request) {
   try {
+    // Extract the ID and completed status from the request body
     const { id, completed } = await request.json();
 
     if (!id || typeof completed !== "boolean") {
@@ -118,10 +119,12 @@ export async function PATCH(request: Request) {
         RETURNING id, completed;
       `;
 
+    // Handle cases where the todo is not found
     if (updated.length === 0) {
       return Response.json({ error: "Todo not found" }, { status: 404 });
     }
 
+    // Return success response
     return Response.json({
       message: "Todo updated successfully",
       todo: updated[0],
