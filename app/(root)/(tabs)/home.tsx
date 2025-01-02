@@ -9,7 +9,11 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import TodoList from "@/components/Todo/TodoList";
-import { fetchAPI, fetchWorkOrders } from "@/lib/fetch";
+
+// 1) Import your new fetchAPI and ApiType
+import { fetchAPI } from "@/lib/fetch";
+import { ApiType } from "@/lib/apiConfig";
+
 import { icons } from "@/constants";
 import { router } from "expo-router";
 
@@ -29,7 +33,6 @@ interface TodoList {
 export default function Home() {
   const [userName, setUserName] = useState<string | null>(null);
   const [todolists, setTodoLists] = useState<TodoList[]>([]);
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,25 +40,23 @@ export default function Home() {
     const loadUserFromGraph = async () => {
       try {
         const token = await AsyncStorage.getItem("access_token");
-
         if (!token) {
           console.warn("No token found. Redirecting to sign-in.");
           handleSignOut();
           return;
         }
 
-        // Fetch user details from Microsoft Graph API
-        const response = await fetch("https://graph.microsoft.com/v1.0/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        // Use fetchAPI + ApiType.GRAPH for Microsoft Graph
+        // If EXPO_PUBLIC_GRAPH_API is "https://graph.microsoft.com/v1.0",
+        // this will call that endpoint and pass the token automatically
+        const graphUrl = `${process.env.EXPO_PUBLIC_GRAPH_API}`;
+        const userData = await fetchAPI(
+          graphUrl,
+          { method: "GET" },
+          ApiType.GRAPH
+        );
 
-        if (!response.ok) {
-          console.error("Graph API call failed. Logging out...");
-          handleSignOut();
-          return;
-        }
-
-        const userData = await response.json();
+        // If the call fails, fetchAPI will throw, jumping to catch below
         console.log("Graph API User Data:", userData);
 
         setUserName(userData.givenName || "Användare");
@@ -71,11 +72,16 @@ export default function Home() {
   // Toggle todo completion
   const onToggle = async (todoId: string, completed: boolean) => {
     try {
-      const response = await fetchAPI(`/todolist`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: todoId, completed }),
-      });
+      // Neon call (default is NEON, but we'll specify for clarity)
+      await fetchAPI(
+        `/todolist`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: todoId, completed }),
+        },
+        ApiType.NEON
+      );
 
       // Update state
       setTodoLists((prevLists) =>
@@ -92,34 +98,50 @@ export default function Home() {
     }
   };
 
-  // Sync work orders and fetch to-do lists
+  // Sync work orders and fetch assigned to-do lists
   useEffect(() => {
     const syncWorkOrdersAndFetchLists = async () => {
       try {
-        const workorders = await fetchWorkOrders();
-        console.log("Fetched Work Orders:", workorders);
+        // 1) Fetch active work orders from Next API
+        //    (requires ApiType.NEXT for baseURL + token from .env)
+        const activeWorkOrders = await fetchAPI(
+          `workorder/?filter_str=${encodeURIComponent(
+            JSON.stringify({
+              statuscode__ge: 40,
+              statuscode__lt: 90,
+            })
+          )}`,
+          { method: "GET" },
+          ApiType.NEXT
+        );
+        console.log(activeWorkOrders);
 
-        await fetchAPI("/(api)/todolist", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ workorders }),
-        });
+        // 2) Sync those work orders with your Neon backend
+        //    (ApiType.NEON, no .env required)
+        await fetchAPI(
+          "/todolist",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ workorders: activeWorkOrders.items }),
+          },
+          ApiType.NEON
+        );
 
-        const response = await fetchAPI("/(api)/todolist", { method: "GET" });
-        console.log("Fetched To-Do Lists:", response);
-
-        if (Array.isArray(response)) {
-          setTodoLists(response);
-        } else {
-          throw new Error("Unexpected API response format.");
-        }
-      } catch (err) {
+        // 3) Fetch all assigned to-do lists (again, Neon by default)
+        const response = await fetchAPI(
+          "/todolist?user_id=3",
+          { method: "GET" },
+          ApiType.NEON
+        );
+        setTodoLists(response);
+      } catch (error) {
         console.error(
           "Error syncing work orders or fetching to-do lists:",
-          err
+          error
         );
-        setError("Failed to load to-do lists.");
       } finally {
+        // We can safely setLoading(false) here
         setLoading(false);
       }
     };

@@ -1,50 +1,48 @@
-import { useState, useEffect, useCallback } from "react";
+// src/api/fetchAPI.ts
+import { API_CONFIG, ApiType } from "./apiConfig";
 
-export const fetchAPI = async (url: string, options?: RequestInit) => {
+export async function fetchAPI(
+  endpointOrUrl: string,
+  options: RequestInit = {},
+  apiType: ApiType = ApiType.NEON // default to NEON
+): Promise<any> {
+  // Get config for the chosen API
+  const { baseURL, getToken } = API_CONFIG[apiType];
+
+  // Determine if the endpoint is fully qualified or relative
+  const finalURL = endpointOrUrl.startsWith("http")
+    ? endpointOrUrl
+    : `${baseURL}${endpointOrUrl}`;
+
+  // Retrieve the token (if this API uses one)
+  let token = null;
+  if (getToken) {
+    token = await getToken();
+  }
+
+  const headers: HeadersInit = {
+    ...options.headers,
+    "Content-Type": "application/json",
+  };
+
+  // If we have a token, attach it
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   try {
-    const response = await fetch(url, options);
+    const response = await fetch(finalURL, {
+      ...options,
+      headers,
+    });
 
     if (!response.ok) {
-      new Error(`HTTP error! status: ${response.status}`);
+      throw new Error(`HTTP error! Status: ${response.status}`);
     }
+
     return await response.json();
   } catch (error) {
     console.error("Fetch error:", error);
     throw error;
   }
-};
-
-export const useFetch = <T>(url: string, options?: RequestInit) => {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await fetchAPI(url, options);
-      setData(result.data);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [url, options]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  return { data, loading, error, refetch: fetchData };
-};
-
-export async function fetchWorkOrders() {
-  // Replace this mock data with an API call when the real endpoint is available
-  return [
-    { id: "WO-001", name: "Work Order 1", description: "Fix plumbing" },
-    { id: "WO-002", name: "Work Order 2", description: "Repair HVAC" },
-    { id: "WO-003", name: "Work Order 3", description: "Electrical check" },
-  ];
 }

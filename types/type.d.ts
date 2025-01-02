@@ -36,4 +36,5 @@ declare interface ToDoList {
   name: string;
   description: string;
   todos: BackendTodo[];
+  belongs_to: string;
 }
