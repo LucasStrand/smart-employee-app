@@ -22,8 +22,7 @@ export const API_CONFIG: Record<ApiType, ApiConfig> = {
     getToken: async () => process.env.EXPO_PUBLIC_NEXT_TOKEN ?? "",
   },
   [ApiType.GRAPH]: {
-    baseURL:
-      process.env.EXPO_PUBLIC_GRAPH_API ?? "https://graph.microsoft.com/v1.0",
+    baseURL: process.env.EXPO_PUBLIC_GRAPH_API ?? "",
     getToken: async () => {
       return (await AsyncStorage.getItem("access_token")) || "";
     },

@@ -65,7 +65,7 @@ export async function GET(request: Request) {
         WHERE
           belongs_to ILIKE ${"%" + searchQuery + "%"} OR
           name ILIKE ${"%" + searchQuery + "%"} OR
-          description ${"%" + searchQuery + "%"}
+          description ILIKE ${"%" + searchQuery + "%"}
         LIMIT ${limit}; 
       `;
 

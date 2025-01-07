@@ -1,13 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   TextInput,
   FlatList,
   Text,
   TouchableOpacity,
+  Alert,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchAPI } from "@/lib/fetch";
-// 1) Import ApiType so we can specify NEON calls explicitly
 import { ApiType } from "@/lib/apiConfig";
 import { ToDoList } from "@/types/type";
 
@@ -15,17 +16,43 @@ const BrowseWorkOrders = () => {
   const [todolists, setTodolists] = useState<ToDoList[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
+  useEffect(() => {
+    fetchTodolists();
+  }, []);
+
   const fetchTodolists = async (query: string = "") => {
     try {
-      // 2) Add ApiType.NEON as the third argument
-      const response = await fetchAPI(
-        `/todolist?query=${query}&limit=20`,
-        { method: "GET" },
-        ApiType.NEON
-      );
+      const response = await fetchAPI(`/todolist?query=${query}&limit=50`, {
+        method: "GET",
+      });
       setTodolists(response);
     } catch (error) {
       console.error("Error fetching todolists:", error);
+    }
+  };
+
+  const assignTodoList = async (todoListId: number) => {
+    try {
+      const userId = await AsyncStorage.getItem("local_user_id");
+      if (!userId) {
+        Alert.alert("Error", "User ID not found. Please log in again.");
+        return;
+      }
+
+      const response = await fetchAPI(`/assigned-todolist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ todoListId, userId }),
+      });
+
+      if (response?.message === "Todo List assigned successfully") {
+        Alert.alert("Success", "Todo List assigned successfully!");
+      } else {
+        Alert.alert("Error", "Failed to assign Todo List.");
+      }
+    } catch (error) {
+      console.error("Error assigning todo list:", error);
+      Alert.alert("Error", "An unexpected error occurred.");
     }
   };
 
@@ -55,21 +82,32 @@ const BrowseWorkOrders = () => {
         data={todolists}
         keyExtractor={(item: ToDoList) => item.id.toString()}
         renderItem={({ item }) => (
-          <TouchableOpacity>
-            <View
+          <View
+            style={{
+              padding: 10,
+              borderBottomWidth: 1,
+              borderBottomColor: "#ccc",
+            }}
+          >
+            <Text style={{ fontWeight: "bold" }}>
+              {item.name || "Unnamed Work Order"}
+            </Text>
+            <Text>{item.belongs_to}</Text>
+            <Text>{item.description}</Text>
+            <TouchableOpacity
+              onPress={() => assignTodoList(item.id)}
               style={{
+                backgroundColor: "blue",
                 padding: 10,
-                borderBottomWidth: 1,
-                borderBottomColor: "#ccc",
+                marginTop: 10,
+                borderRadius: 5,
               }}
             >
-              <Text style={{ fontWeight: "bold" }}>
-                {item.name || "Unnamed Work Order"}
-                <Text>{item.description}</Text>
+              <Text style={{ color: "white", textAlign: "center" }}>
+                Assign
               </Text>
-              <Text>{item.belongs_to}</Text>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
         )}
       />
     </View>
