@@ -9,17 +9,20 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchAPI } from "@/lib/fetch";
-import { ApiType } from "@/lib/apiConfig";
 import { ToDoList } from "@/types/type";
+import CustomButton from "@/components/CustomButton";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const BrowseWorkOrders = () => {
   const [todolists, setTodolists] = useState<ToDoList[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // 1) Initial load of to-do lists
   useEffect(() => {
     fetchTodolists();
   }, []);
 
+  // 2) Fetch from /todolist
   const fetchTodolists = async (query: string = "") => {
     try {
       const response = await fetchAPI(`/todolist?query=${query}&limit=50`, {
@@ -31,7 +34,8 @@ const BrowseWorkOrders = () => {
     }
   };
 
-  const assignTodoList = async (todoListId: number) => {
+  // 3) Assign a to-do list, then refresh
+  const assignTodoList = async (todoListId: string) => {
     try {
       const userId = await AsyncStorage.getItem("local_user_id");
       if (!userId) {
@@ -47,6 +51,7 @@ const BrowseWorkOrders = () => {
 
       if (response?.message === "Todo List assigned successfully") {
         Alert.alert("Success", "Todo List assigned successfully!");
+        fetchTodolists(searchQuery);
       } else {
         Alert.alert("Error", "Failed to assign Todo List.");
       }
@@ -56,61 +61,55 @@ const BrowseWorkOrders = () => {
     }
   };
 
+  // 4) Handle search
   const handleSearch = (text: string) => {
     setSearchQuery(text);
     fetchTodolists(text);
   };
 
   return (
-    <View>
+    <SafeAreaView className="flex-1 bg-white p-4">
       {/* Search Bar */}
       <TextInput
         value={searchQuery}
         onChangeText={handleSearch}
         placeholder="Search work orders"
-        style={{
-          height: 40,
-          borderColor: "gray",
-          borderWidth: 1,
-          marginBottom: 10,
-          paddingHorizontal: 8,
-        }}
+        className="h-10 border border-gray-400 px-2 mb-3"
       />
 
       {/* Work Order List */}
       <FlatList
         data={todolists}
-        keyExtractor={(item: ToDoList) => item.id.toString()}
+        keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
-          <View
-            style={{
-              padding: 10,
-              borderBottomWidth: 1,
-              borderBottomColor: "#ccc",
-            }}
-          >
-            <Text style={{ fontWeight: "bold" }}>
+          <View className="p-3 border-b border-gray-300">
+            <Text className="font-bold">
               {item.name || "Unnamed Work Order"}
             </Text>
             <Text>{item.belongs_to}</Text>
             <Text>{item.description}</Text>
-            <TouchableOpacity
-              onPress={() => assignTodoList(item.id)}
-              style={{
-                backgroundColor: "blue",
-                padding: 10,
-                marginTop: 10,
-                borderRadius: 5,
-              }}
-            >
-              <Text style={{ color: "white", textAlign: "center" }}>
-                Assign
-              </Text>
-            </TouchableOpacity>
+
+            {item.user_id !== null ? (
+              /* If assigned => red button, text "Upptaget" */
+              <CustomButton
+                onPress={() => {}}
+                title="Upptagen"
+                bgVariant="danger"
+                className="mt-2"
+                disabled
+              />
+            ) : (
+              /* If not assigned => normal "Skapa checklista" button */
+              <CustomButton
+                onPress={() => assignTodoList(item.id)}
+                title="Checklista"
+                className="mt-2"
+              />
+            )}
           </View>
         )}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 

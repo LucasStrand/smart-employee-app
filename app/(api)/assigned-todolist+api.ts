@@ -97,3 +97,46 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const { todoListId } = await request.json();
+
+    if (!todoListId) {
+      return new Response(JSON.stringify({ error: "Missing todoListId" }), {
+        status: 400,
+      });
+    }
+
+    // Set user_id = NULL for the specified list
+    const result = await sql`
+      UPDATE todo_lists
+      SET user_id = NULL
+      WHERE id = ${todoListId}
+      RETURNING id, user_id, name;
+    `;
+
+    if (result.length === 0) {
+      return new Response(JSON.stringify({ error: "Todo list not found" }), {
+        status: 404,
+      });
+    }
+
+    return new Response(
+      JSON.stringify({
+        message: "Todo list unassigned successfully",
+        unassignedList: result[0],
+      }),
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Error unassigning todo list:", error);
+    return new Response(
+      JSON.stringify({
+        error: "Internal Server Error",
+        details: (error as Error).message || "Unknown error",
+      }),
+      { status: 500 }
+    );
+  }
+}

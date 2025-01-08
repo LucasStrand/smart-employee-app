@@ -6,15 +6,17 @@ import {
   Image,
   ActivityIndicator,
   TouchableOpacity,
+  FlatList,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import TodoList from "@/components/Todo/TodoList";
-
 import { fetchAPI } from "@/lib/fetch";
 import { ApiType } from "@/lib/apiConfig";
-
 import { icons } from "@/constants";
-import { router } from "expo-router";
+import { useRouter } from "expo-router";
+import ReactNativeModal from "react-native-modal";
+import CustomButton from "@/components/CustomButton";
+import { getRandomEmoji } from "@/lib/getRandomEmoji";
 
 interface Todo {
   id: string;
@@ -22,7 +24,7 @@ interface Todo {
   completed: boolean;
 }
 
-interface TodoList {
+interface TodoListType {
   id: string;
   name: string;
   description: string;
@@ -30,17 +32,26 @@ interface TodoList {
 }
 
 const Home = () => {
+  const router = useRouter();
   const [userName, setUserName] = useState<string | null>(null);
-  const [todolists, setTodoLists] = useState<TodoList[]>([]);
+  const [randomEmoji, setRandomEmoji] = useState<string>("");
+
+  const [todolists, setTodoLists] = useState<TodoListType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // For “last item” modal
+  const [showLastItemModal, setShowLastItemModal] = useState(false);
+  const [pendingTodo, setPendingTodo] = useState<{
+    todoId: string;
+    listId: string;
+  } | null>(null);
 
+  // Load user from Graph
   useEffect(() => {
     const loadUserFromGraph = async () => {
       try {
         const token = await AsyncStorage.getItem("access_token");
         if (!token) {
-          console.warn("No token found. Redirecting to sign-in.");
           handleSignOut();
           return;
         }
@@ -49,19 +60,16 @@ const Home = () => {
           { method: "GET" },
           ApiType.GRAPH
         );
-
-        console.log("Graph API User Data:", userData);
-
         setUserName(userData.givenName || "Användare");
+        setRandomEmoji(getRandomEmoji());
       } catch (err) {
-        console.error("Error fetching user data:", err);
         handleSignOut();
       }
     };
-
     loadUserFromGraph();
   }, []);
 
+  // Fetch assigned to-do lists
   useEffect(() => {
     const fetchAssignedTodoLists = async () => {
       try {
@@ -70,42 +78,138 @@ const Home = () => {
 
         const response = await fetchAPI(
           `/assigned-todolist?user_id=${userId}`,
-          { method: "GET" },
-          ApiType.NEON
+          { method: "GET" }
         );
-
         setTodoLists(response);
       } catch (err) {
-        console.error("Error fetching assigned to-do lists:", err);
         setError("Failed to load your to-do lists.");
       } finally {
         setLoading(false);
       }
     };
-
     fetchAssignedTodoLists();
   }, []);
 
-  const onToggle = async (todoId: string, completed: boolean) => {
+  // If not last item, just do the toggle. If last item, prompt modal first.
+  const attemptToggle = (todoId: string, newValue: boolean, listId: string) => {
+    if (!newValue) {
+      // user is unchecking a completed item => no confirmation needed
+      doToggle(todoId, newValue, listId);
+      return;
+    }
+
+    // user wants to check a (probably incomplete) item => see if it's last incomplete
+    const foundList = todolists.find((l) => l.id === listId);
+    if (!foundList) {
+      // just do normal toggle
+      doToggle(todoId, newValue, listId);
+      return;
+    }
+
+    // how many are incomplete?
+    const incompleteCount = foundList.todos.filter((t) => !t.completed).length;
+    if (incompleteCount === 1) {
+      // It's the last incomplete => show modal
+      setPendingTodo({ todoId, listId });
+      setShowLastItemModal(true);
+    } else {
+      // Just do normal toggle
+      doToggle(todoId, newValue, listId);
+    }
+  };
+
+  // Actually set the item to completed = newValue
+  const doToggle = async (todoId: string, newVal: boolean, listId: string) => {
     try {
-      await fetchAPI(`/todolist`, {
+      // 1) Update the single task in the backend
+      await fetchAPI("/todolist", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: todoId, completed }),
+        body: JSON.stringify({ id: todoId, completed: newVal }),
       });
 
+      // 2) Update local state
       setTodoLists((prevLists) =>
-        prevLists.map((list) => ({
-          ...list,
-          todos: list.todos.map((todo) =>
-            todo.id === todoId ? { ...todo, completed } : todo
-          ),
-        }))
+        prevLists.map((list) => {
+          if (list.id === listId) {
+            return {
+              ...list,
+              todos: list.todos.map((todo) =>
+                todo.id === todoId ? { ...todo, completed: newVal } : todo
+              ),
+            };
+          }
+          return list;
+        })
       );
+
+      // 3) If it's newly completed, check if entire list is done => archive
+      if (newVal) {
+        archiveCheck(listId);
+      }
     } catch (err) {
-      console.error("Error updating todo:", err);
-      alert("Failed to update the todo. Please try again.");
+      console.error("Error toggling task:", err);
     }
+  };
+
+  // archiveCheck => if entire list is done => archive
+  const archiveCheck = (listId: string) => {
+    const theList = todolists.find((l) => l.id === listId);
+    if (!theList) return;
+
+    const allDone = theList.todos.every((t) => t.completed);
+    if (allDone) {
+      // call archive
+      archiveTodolist(listId);
+    }
+  };
+
+  // call /archive-todolist
+  const archiveTodolist = async (todoListId: string) => {
+    try {
+      const response = await fetchAPI("/archive-todolist", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ todoListId }),
+      });
+      if (response?.message === "To-Do list archived successfully") {
+        // remove from local state
+        setTodoLists((prev) => prev.filter((l) => l.id !== todoListId));
+      }
+    } catch (error) {
+      console.error("Error archiving todo list:", error);
+    }
+  };
+
+  // user taps close icon => unassign
+  const handleUnassign = async (todoListId: string) => {
+    try {
+      const response = await fetchAPI("/assigned-todolist", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ todoListId }),
+      });
+      if (response?.message === "Todo list unassigned successfully") {
+        const userId = await AsyncStorage.getItem("local_user_id");
+        if (!userId) return;
+        const updatedLists = await fetchAPI(
+          `/assigned-todolist?user_id=${userId}`,
+          { method: "GET" }
+        );
+        setTodoLists(updatedLists);
+      }
+    } catch (error) {
+      console.error("Error unassigning list:", error);
+    }
+  };
+
+  // user taps "remove" => show remove modal
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [removeListId, setRemoveListId] = useState<string | null>(null);
+
+  const confirmRemoveList = (listId: string) => {
+    setRemoveListId(listId);
+    setShowRemoveModal(true);
   };
 
   const handleSignOut = async () => {
@@ -119,7 +223,7 @@ const Home = () => {
 
   if (loading) {
     return (
-      <SafeAreaView>
+      <SafeAreaView className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" />
       </SafeAreaView>
     );
@@ -127,10 +231,10 @@ const Home = () => {
 
   if (error) {
     return (
-      <SafeAreaView>
+      <SafeAreaView className="flex-1 p-4 bg-white">
         <Text className="text-red-500">{error}</Text>
         <TouchableOpacity onPress={handleSignOut}>
-          <Text className="text-blue-500 underline">
+          <Text className="text-blue-500 underline mt-2">
             Logga ut och försök igen
           </Text>
         </TouchableOpacity>
@@ -139,31 +243,117 @@ const Home = () => {
   }
 
   return (
-    <SafeAreaView>
+    <SafeAreaView className="flex-1 bg-white">
+      {/* Greeting + search */}
       <View className="flex flex-row items-center justify-between my-2 px-3">
-        <Text className="text-2xl font-JakartaExtraBold">
-          Hej {userName || "Användare"} 👋
+        <Text className="text-2xl font-bold">
+          {userName || "Användare"} Checklistor {randomEmoji}
         </Text>
         <TouchableOpacity
-          onPress={handleSignOut}
-          className="justify-center items-center w-10 h-10 rounded-full bg-white"
+          onPress={() => router.push("/browse-workorders")}
+          className="w-10 h-10 justify-center items-center rounded-full bg-white"
         >
-          <Image source={icons.out} className="w-4 h-4" />
+          <Image source={icons.search} className="w-5 h-5" />
         </TouchableOpacity>
       </View>
 
-      <View>
-        <Text className="text-2xl font-JakartaBold mt-5 px-3">To-Do Lists</Text>
-        {(todolists || []).map((list) => (
+      <FlatList
+        className="pt-4 px-2"
+        contentContainerStyle={{ paddingBottom: 78 }}
+        data={todolists}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
           <TodoList
-            key={list.id}
-            data={list.todos}
-            name={list.name}
-            description={list.description}
-            onToggle={onToggle}
+            listId={item.id}
+            data={item.todos}
+            name={item.name}
+            description={item.description}
+            // Instead of onToggle => attemptToggle
+            onToggle={(todoId: string, newVal: boolean, listId: string) =>
+              attemptToggle(todoId, newVal, listId)
+            }
+            onUnassign={() => confirmRemoveList(item.id)}
           />
-        ))}
-      </View>
+        )}
+      />
+
+      {/* Remove Modal */}
+      <ReactNativeModal isVisible={showRemoveModal}>
+        <View className="bg-white px-7 py-9 rounded-2xl min-h-[240px]">
+          <Text className="text-2xl font-bold text-center mb-2">
+            Ta bort checklista?
+          </Text>
+          <Text className="text-base text-gray-500 text-center">
+            Är du säker på att du vill ta bort denna checklista?
+          </Text>
+
+          <View className="flex-row justify-center mt-6">
+            <CustomButton
+              title="Avbryt"
+              bgVariant="outline"
+              textVariant="primary"
+              onPress={() => {
+                setShowRemoveModal(false);
+                setRemoveListId(null);
+              }}
+              className="mx-2"
+            />
+            <CustomButton
+              title="Ta Bort"
+              onPress={() => {
+                if (removeListId) {
+                  handleUnassign(removeListId);
+                }
+                setShowRemoveModal(false);
+                setRemoveListId(null);
+              }}
+              bgVariant="danger"
+              className="mx-2"
+            />
+          </View>
+        </View>
+      </ReactNativeModal>
+
+      {/* Last Incomplete Item Modal */}
+      <ReactNativeModal isVisible={showLastItemModal}>
+        <View className="bg-white px-7 py-9 rounded-2xl min-h-[220px]">
+          <Text className="text-2xl font-bold text-center mb-2">
+            Markera sista uppgiften?
+          </Text>
+          <Text className="text-base text-gray-500 text-center">
+            Detta är den sista uppgiften i checklistan. Om du fortsätter kommer
+            den att markeras som klar och checklistan arkiveras.
+          </Text>
+
+          <View className="flex-row justify-center mt-6">
+            {/* Avbryt */}
+            <CustomButton
+              title="Avbryt"
+              bgVariant="outline"
+              textVariant="primary"
+              onPress={() => {
+                setPendingTodo(null);
+                setShowLastItemModal(false);
+              }}
+              className="mx-2"
+            />
+            {/* OK => finalize toggle */}
+            <CustomButton
+              title="OK"
+              bgVariant="success"
+              onPress={() => {
+                if (pendingTodo) {
+                  // Actually do the final toggle now
+                  doToggle(pendingTodo.todoId, true, pendingTodo.listId);
+                }
+                setPendingTodo(null);
+                setShowLastItemModal(false);
+              }}
+              className="mx-2"
+            />
+          </View>
+        </View>
+      </ReactNativeModal>
     </SafeAreaView>
   );
 };

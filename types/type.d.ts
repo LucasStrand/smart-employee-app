@@ -32,7 +32,8 @@ declare interface BackendTodo extends ITodo {
 }
 
 declare interface ToDoList {
-  id: number;
+  user_id?: string;
+  id: string;
   name: string;
   description: string;
   todos: BackendTodo[];

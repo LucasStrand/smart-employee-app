@@ -32,7 +32,7 @@ import onboarding1 from "@/assets/images/onboarding1.png";
 import onboarding2 from "@/assets/images/onboarding2.png";
 import onboarding3 from "@/assets/images/onboarding3.png";
 import signUpCar from "@/assets/images/signup-car.png";
-
+import add from "@/assets/icons/add.svg";
 import logo from "@/assets/images/logga_png.png";
 import peopleTogether from "@/assets/images/people-together.png";
 import SMFasad from "@/assets/images/smartteknik_fasad.png";
@@ -51,6 +51,7 @@ export const images = {
 };
 
 export const icons = {
+  add,
   arrowDown,
   arrowUp,
   backArrow,
