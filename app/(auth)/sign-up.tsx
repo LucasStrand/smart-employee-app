@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Alert, Image, ScrollView, Text, View } from "react-native";
-import { ReactNativeModal } from "react-native-modal";
+import { Alert, Image, Modal, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import CustomButton from "@/components/CustomButton";
@@ -111,28 +110,38 @@ const SignUp = () => {
         </View>
 
         {/* Success Modal */}
-        <ReactNativeModal isVisible={showSuccessModal}>
-          <View className="bg-white px-7 py-9 rounded-2xl min-h-[300px]">
-            <Image
-              source={images.check}
-              className="w-[110px] h-[110px] mx-auto my-5"
-            />
-            <Text className="text-3xl font-JakartaBold text-center">
-              Registrering Slutförd
-            </Text>
-            <Text className="text-base text-gray-400 font-Jakarta text-center mt-2">
-              Ditt konto har skapats framgångsrikt.
-            </Text>
-            <CustomButton
-              title="Logga In"
-              onPress={() => {
-                setShowSuccessModal(false);
-                router.push("/sign-in");
-              }}
-              className="mt-5"
-            />
+        <Modal
+          visible={showSuccessModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowSuccessModal(false)}
+        >
+          <View
+            className="flex-1 justify-center px-5"
+            style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+          >
+            <View className="bg-white px-7 py-9 rounded-2xl min-h-[300px]">
+              <Image
+                source={images.check}
+                className="w-[110px] h-[110px] mx-auto my-5"
+              />
+              <Text className="text-3xl font-JakartaBold text-center">
+                Registrering Slutförd
+              </Text>
+              <Text className="text-base text-gray-400 font-Jakarta text-center mt-2">
+                Ditt konto har skapats framgångsrikt.
+              </Text>
+              <CustomButton
+                title="Logga In"
+                onPress={() => {
+                  setShowSuccessModal(false);
+                  router.push("/sign-in");
+                }}
+                className="mt-5"
+              />
+            </View>
           </View>
-        </ReactNativeModal>
+        </Modal>
       </View>
     </ScrollView>
   );

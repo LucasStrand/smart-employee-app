@@ -1,20 +1,16 @@
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import "react-native-reanimated";
 import { useEffect, useState } from "react";
 import { useFonts } from "expo-font";
 import "../assets/global.css";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ActivityIndicator, View } from "react-native";
-import { useRouter } from "expo-router";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const router = useRouter();
 
   const [fontsLoaded] = useFonts({
     "Jakarta-Bold": require("../assets/fonts/PlusJakartaSans-Bold.ttf"),
@@ -29,8 +25,7 @@ export default function RootLayout() {
   // Check session
   useEffect(() => {
     const loadSession = async () => {
-      const token = await AsyncStorage.getItem("access_token");
-      setIsAuthenticated(!!token);
+      await AsyncStorage.getItem("access_token");
       setIsLoading(false);
     };
     loadSession();

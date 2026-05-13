@@ -1,17 +1,46 @@
 import { router } from "expo-router";
 import { useRef, useState } from "react";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import {
+  FlatList,
+  Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Swiper from "react-native-swiper";
 
 import CustomButton from "@/components/CustomButton";
 import { onboarding } from "@/constants";
 
 const Onboarding = () => {
-  const swiperRef = useRef<Swiper>(null);
+  const { width } = useWindowDimensions();
+  const flatListRef = useRef<FlatList<(typeof onboarding)[number]>>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
   const isLastSlide = activeIndex === onboarding.length - 1;
+
+  const handleMomentumScrollEnd = (
+    event: NativeSyntheticEvent<NativeScrollEvent>,
+  ) => {
+    const nextIndex = Math.round(event.nativeEvent.contentOffset.x / width);
+    setActiveIndex(nextIndex);
+  };
+
+  const goToNextSlide = () => {
+    if (isLastSlide) {
+      router.replace("/(auth)/sign-up");
+      return;
+    }
+
+    flatListRef.current?.scrollToIndex({
+      index: activeIndex + 1,
+      animated: true,
+    });
+  };
+
   return (
     <SafeAreaView className="flex h-full items-center justify-between bg-white">
       <TouchableOpacity
@@ -23,19 +52,20 @@ const Onboarding = () => {
         <Text className="text-black text-md font-JakartaBold">Skip</Text>
       </TouchableOpacity>
 
-      <Swiper
-        ref={swiperRef}
-        loop={false}
-        dot={
-          <View className="w-[32px] h-[4px] mx-1 bg-[#E2E8F0] rounded-full" />
-        }
-        activeDot={
-          <View className="w-[32px] h-[4px] mx-1 bg-[#FEBA17] rounded-full" />
-        }
-        onIndexChanged={(index) => setActiveIndex(index)}
-      >
-        {onboarding.map((item) => (
-          <View key={item.id} className="flex items-center justify-center p-5">
+      <FlatList
+        ref={flatListRef}
+        data={onboarding}
+        horizontal
+        pagingEnabled
+        bounces={false}
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => item.id.toString()}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        renderItem={({ item }) => (
+          <View
+            className="flex items-center justify-center p-5"
+            style={{ width }}
+          >
             <Image
               source={item.image}
               className="w-full h-[300px]"
@@ -50,16 +80,23 @@ const Onboarding = () => {
               {item.description}
             </Text>
           </View>
+        )}
+      />
+
+      <View className="flex flex-row items-center justify-center">
+        {onboarding.map((item, index) => (
+          <View
+            key={item.id}
+            className={`w-[32px] h-[4px] mx-1 rounded-full ${
+              index === activeIndex ? "bg-[#FEBA17]" : "bg-[#E2E8F0]"
+            }`}
+          />
         ))}
-      </Swiper>
+      </View>
 
       <CustomButton
         title={isLastSlide ? "Kom igång" : "Nästa"}
-        onPress={() =>
-          isLastSlide
-            ? router.replace("/(auth)/sign-up")
-            : swiperRef.current?.scrollBy(1)
-        }
+        onPress={goToNextSlide}
         className="w-11/12 mt-10 mb-5"
       />
     </SafeAreaView>

@@ -27,7 +27,7 @@ const SignIn = () => {
       redirectUri: REDIRECT_URI,
       scopes: ["openid", "profile", "email", "User.Read"],
       responseType: "code",
-      codeChallengeMethod: "S256",
+      codeChallengeMethod: AuthSession.CodeChallengeMethod.S256,
     },
     {
       authorizationEndpoint: AUTH_URL,
@@ -46,17 +46,22 @@ const SignIn = () => {
 
     try {
       // 1) Exchange the code for a token
+      const tokenBody = new URLSearchParams({
+        client_id: CLIENT_ID,
+        scope: "openid profile email User.Read",
+        code: result.params.code,
+        redirect_uri: REDIRECT_URI,
+        grant_type: "authorization_code",
+      });
+
+      if (request.codeVerifier) {
+        tokenBody.set("code_verifier", request.codeVerifier);
+      }
+
       const tokenResponse = await fetch(TOKEN_URL, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          client_id: CLIENT_ID,
-          scope: "openid profile email User.Read",
-          code: result.params.code,
-          redirect_uri: REDIRECT_URI,
-          grant_type: "authorization_code",
-          code_verifier: request.codeVerifier,
-        }).toString(),
+        body: tokenBody.toString(),
       });
 
       const tokenData = await tokenResponse.json();

@@ -20,14 +20,12 @@ export async function fetchAPI(
     token = await getToken();
   }
 
-  const headers: HeadersInit = {
-    ...options.headers,
-    "Content-Type": "application/json",
-  };
+  const headers = new Headers(options.headers);
+  headers.set("Content-Type", "application/json");
 
   // If we have a token, attach it
   if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+    headers.set("Authorization", `Bearer ${token}`);
   }
 
   try {

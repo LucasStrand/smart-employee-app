@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   FlatList,
+  Modal,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import TodoList from "@/components/Todo/TodoList";
@@ -14,7 +15,6 @@ import { fetchAPI } from "@/lib/fetch";
 import { ApiType } from "@/lib/apiConfig";
 import { icons } from "@/constants";
 import { useRouter } from "expo-router";
-import ReactNativeModal from "react-native-modal";
 import CustomButton from "@/components/CustomButton";
 import { getRandomEmoji } from "@/lib/getRandomEmoji";
 
@@ -278,82 +278,108 @@ const Home = () => {
       />
 
       {/* Remove Modal */}
-      <ReactNativeModal isVisible={showRemoveModal}>
-        <View className="bg-white px-7 py-9 rounded-2xl min-h-[240px]">
-          <Text className="text-2xl font-bold text-center mb-2">
-            Ta bort checklista?
-          </Text>
-          <Text className="text-base text-gray-500 text-center">
-            Är du säker på att du vill ta bort denna checklista?
-          </Text>
+      <Modal
+        visible={showRemoveModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowRemoveModal(false);
+          setRemoveListId(null);
+        }}
+      >
+        <View
+          className="flex-1 justify-center px-5"
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+        >
+          <View className="bg-white px-7 py-9 rounded-2xl min-h-[240px]">
+            <Text className="text-2xl font-bold text-center mb-2">
+              Ta bort checklista?
+            </Text>
+            <Text className="text-base text-gray-500 text-center">
+              Är du säker på att du vill ta bort denna checklista?
+            </Text>
 
-          <View className="flex-row justify-center mt-6">
-            <CustomButton
-              title="Avbryt"
-              bgVariant="outline"
-              textVariant="primary"
-              onPress={() => {
-                setShowRemoveModal(false);
-                setRemoveListId(null);
-              }}
-              className="mx-2"
-            />
-            <CustomButton
-              title="Ta Bort"
-              onPress={() => {
-                if (removeListId) {
-                  handleUnassign(removeListId);
-                }
-                setShowRemoveModal(false);
-                setRemoveListId(null);
-              }}
-              bgVariant="danger"
-              className="mx-2"
-            />
+            <View className="flex-row justify-center mt-6">
+              <CustomButton
+                title="Avbryt"
+                bgVariant="outline"
+                textVariant="primary"
+                onPress={() => {
+                  setShowRemoveModal(false);
+                  setRemoveListId(null);
+                }}
+                className="mx-2"
+              />
+              <CustomButton
+                title="Ta Bort"
+                onPress={() => {
+                  if (removeListId) {
+                    handleUnassign(removeListId);
+                  }
+                  setShowRemoveModal(false);
+                  setRemoveListId(null);
+                }}
+                bgVariant="danger"
+                className="mx-2"
+              />
+            </View>
           </View>
         </View>
-      </ReactNativeModal>
+      </Modal>
 
       {/* Last Incomplete Item Modal */}
-      <ReactNativeModal isVisible={showLastItemModal}>
-        <View className="bg-white px-7 py-9 rounded-2xl min-h-[220px]">
-          <Text className="text-2xl font-bold text-center mb-2">
-            Markera sista uppgiften?
-          </Text>
-          <Text className="text-base text-gray-500 text-center">
-            Detta är den sista uppgiften i checklistan. Om du fortsätter kommer
-            den att markeras som klar och checklistan arkiveras.
-          </Text>
+      <Modal
+        visible={showLastItemModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setPendingTodo(null);
+          setShowLastItemModal(false);
+        }}
+      >
+        <View
+          className="flex-1 justify-center px-5"
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+        >
+          <View className="bg-white px-7 py-9 rounded-2xl min-h-[220px]">
+            <Text className="text-2xl font-bold text-center mb-2">
+              Markera sista uppgiften?
+            </Text>
+            <Text className="text-base text-gray-500 text-center">
+              Detta är den sista uppgiften i checklistan. Om du fortsätter
+              kommer den att markeras som klar och checklistan arkiveras.
+            </Text>
 
-          <View className="flex-row justify-center mt-6">
-            {/* Avbryt */}
-            <CustomButton
-              title="Avbryt"
-              bgVariant="outline"
-              textVariant="primary"
-              onPress={() => {
-                setPendingTodo(null);
-                setShowLastItemModal(false);
-              }}
-              className="mx-2"
-            />
-            {/* OK => finalize toggle */}
-            <CustomButton
-              title="OK"
-              bgVariant="success"
-              onPress={() => {
-                if (pendingTodo) {
-                  // Actually do the final toggle now
-                  doToggle(pendingTodo.todoId, true, pendingTodo.listId);
-                }
-                setPendingTodo(null);
-                setShowLastItemModal(false);
-              }}
-              className="mx-2"
-            />
+            <View className="flex-row justify-center mt-6">
+              {/* Avbryt */}
+              <CustomButton
+                title="Avbryt"
+                bgVariant="outline"
+                textVariant="primary"
+                onPress={() => {
+                  setPendingTodo(null);
+                  setShowLastItemModal(false);
+                }}
+                className="mx-2"
+              />
+              {/* OK => finalize toggle */}
+              <CustomButton
+                title="OK"
+                bgVariant="success"
+                onPress={() => {
+                  if (pendingTodo) {
+                    // Actually do the final toggle now
+                    doToggle(pendingTodo.todoId, true, pendingTodo.listId);
+                  }
+                  setPendingTodo(null);
+                  setShowLastItemModal(false);
+                }}
+                className="mx-2"
+              />
+            </View>
           </View>
         </View>
-      </ReactNativeModal>
+      </Modal>
     </SafeAreaView>
   );
 };
