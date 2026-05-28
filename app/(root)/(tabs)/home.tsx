@@ -29,7 +29,6 @@ import { CollapsibleScreen } from "@/components/playbook/CollapsibleScreen";
 import { Pill } from "@/components/playbook/Pill";
 import { SearchBar } from "@/components/playbook/SearchBar";
 import { SectionHeader } from "@/components/playbook/SectionHeader";
-import { StatTile } from "@/components/playbook/StatTile";
 import { getScreenTopPadding } from "@/lib/screenInsets";
 
 const Home = () => {
@@ -175,30 +174,6 @@ const Home = () => {
           onFilterPress={() => router.push("/(root)/(tabs)/library")}
         />
       </View>
-
-      {/* Stat strip */}
-      <View
-        style={{
-          flexDirection: "row",
-          gap: 10,
-          paddingHorizontal: 20,
-          marginTop: 18,
-        }}
-      >
-            <StatTile
-              accent
-              label="Kapitel"
-              value={String(chapters.length)}
-            />
-            <StatTile
-              label="Kategorier"
-              value={String(categories.length)}
-            />
-            <StatTile
-              label="Faser"
-              value="6"
-            />
-          </View>
 
           {/* Categories */}
           <View style={{ paddingHorizontal: 20, marginTop: 30 }}>
