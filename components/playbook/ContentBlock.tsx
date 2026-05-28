@@ -186,13 +186,13 @@ const Highlight: React.FC<{ block: HighlightBlock }> = ({ block }) => {
 };
 
 const Formula: React.FC<{ block: FormulaBlock }> = ({ block }) => {
-  const { colors, mode } = useTheme();
+  const { colors } = useTheme();
   return (
     <View
       style={{
         padding: 14,
         borderRadius: 12,
-        backgroundColor: mode === "dark" ? "#0a0a0c" : colors.surfaceMuted,
+        backgroundColor: colors.surfaceMuted,
         borderWidth: 1,
         borderColor: colors.border,
       }}

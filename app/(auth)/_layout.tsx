@@ -1,11 +1,15 @@
 import { Stack } from "expo-router";
 
+import { useTheme } from "@/lib/ThemeContext";
+
 const Layout = () => {
+  const { colors } = useTheme();
+
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: "transparent" },
+        contentStyle: { backgroundColor: colors.bg },
         animation: "fade",
       }}
     >

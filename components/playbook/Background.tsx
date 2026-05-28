@@ -9,11 +9,7 @@ interface Props extends ViewProps {
 }
 
 /**
- * Themed background wrapper. Renders the base gradient + a faint amber
- * brand glow so every screen feels part of the Smart Teknik universe.
- *
- * We approximate gradients with stacked tinted layers to avoid pulling in
- * react-native-linear-gradient.
+ * Themed background wrapper using html-theme.css `--bg` as a flat base in dark mode.
  */
 export const Background: React.FC<Props> = ({
   children,
@@ -28,30 +24,33 @@ export const Background: React.FC<Props> = ({
       style={[{ flex: 1, backgroundColor: colors.bg }, style]}
       {...rest}
     >
-      {/* Top vignette */}
-      <View
-        pointerEvents="none"
-        style={[
-          StyleSheet.absoluteFillObject,
-          {
-            backgroundColor: colors.bgGradientTop,
-            opacity: mode === "dark" ? 0.7 : 0.85,
-          },
-        ]}
-      />
-      {/* Bottom vignette */}
-      <View
-        pointerEvents="none"
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: 320,
-          backgroundColor: colors.bgGradientBottom,
-          opacity: 0.65,
-        }}
-      />
+      {mode === "light" && (
+        <>
+          <View
+            pointerEvents="none"
+            style={[
+              StyleSheet.absoluteFillObject,
+              {
+                backgroundColor: colors.bgGradientTop,
+                opacity: 0.85,
+              },
+            ]}
+          />
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 320,
+              backgroundColor: colors.bgGradientBottom,
+              opacity: 0.65,
+            }}
+          />
+        </>
+      )}
+
       {glow && (
         <>
           <View
@@ -64,7 +63,7 @@ export const Background: React.FC<Props> = ({
               height: 280,
               borderRadius: 999,
               backgroundColor: colors.brand,
-              opacity: mode === "dark" ? 0.07 : 0.05,
+              opacity: mode === "dark" ? 0.08 : 0.05,
             }}
           />
           <View

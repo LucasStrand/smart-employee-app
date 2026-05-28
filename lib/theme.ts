@@ -70,16 +70,17 @@ export const darkColors: ThemeColors = {
   brandGlow: "rgba(254, 186, 23, 0.15)",
   brandOnBrand: "#1a1100",
 
-  bg: "#0a0a0c",
-  bgGradientTop: "#0e0e12",
-  bgGradientBottom: "#050507",
-  surface: "#141417",
-  surfaceRaised: "#1c1c20",
-  surfaceMuted: "#101013",
-  overlayScrim: "rgba(0,0,0,0.55)",
+  // Mirrors docs/html-theme.css dark tokens
+  bg: "#0b0b0b",
+  bgGradientTop: "#0b0b0b",
+  bgGradientBottom: "#0b0b0b",
+  surface: "#151515",
+  surfaceRaised: "#1a1a1a",
+  surfaceMuted: "#131313",
+  overlayScrim: "rgba(0, 0, 0, 0.55)",
 
   glassTint: "dark",
-  glassBg: "rgba(20, 20, 24, 0.55)",
+  glassBg: "rgba(21, 21, 21, 0.55)",
   glassBorder: "rgba(255, 255, 255, 0.08)",
   glassHighlight: "rgba(255, 255, 255, 0.04)",
 

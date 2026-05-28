@@ -36,7 +36,7 @@ const Layout = () => {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: "transparent" },
+        contentStyle: { backgroundColor: colors.bg },
         animation: "slide_from_right",
       }}
     >

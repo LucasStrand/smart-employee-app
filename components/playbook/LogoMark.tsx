@@ -17,31 +17,19 @@ export const LogoMark: React.FC<Props> = ({
   wordmark = "Smart Teknik",
   subtitle = "Standard",
 }) => {
-  const { colors } = useTheme();
+  const { colors, mode } = useTheme();
+  const logoSource = mode === "dark" ? images.logoWhite : images.logo;
+
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-      <View
+      <Image
+        source={logoSource}
         style={{
-          width: size,
+          width: size * 1.6,
           height: size,
-          borderRadius: 14,
-          backgroundColor: colors.brandGlow,
-          borderWidth: 1,
-          borderColor: colors.borderBrand,
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
+          resizeMode: "contain",
         }}
-      >
-        <Image
-          source={images.logo}
-          style={{
-            width: size * 0.72,
-            height: size * 0.72,
-            resizeMode: "contain",
-          }}
-        />
-      </View>
+      />
       {showWordmark && (
         <View>
           <Text

@@ -83,12 +83,15 @@ const TabBarBackground: React.FC = () => {
 };
 
 export default function Layout() {
+  const { colors } = useTheme();
+
   return (
     <Tabs
       initialRouteName="home"
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
+        sceneStyle: { backgroundColor: colors.bg },
         tabBarBackground: () => <TabBarBackground />,
         tabBarStyle: {
           position: "absolute",

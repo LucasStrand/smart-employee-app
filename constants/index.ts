@@ -34,6 +34,7 @@ import onboarding3 from "@/assets/images/onboarding3.png";
 import signUpCar from "@/assets/images/signup-car.png";
 import add from "@/assets/icons/add.svg";
 import logo from "@/assets/images/logga_png.png";
+import logoWhite from "@/assets/images/sm_logga_vit.png";
 import peopleTogether from "@/assets/images/people-together.png";
 import SMFasad from "@/assets/images/smartteknik_fasad.png";
 
@@ -47,6 +48,7 @@ export const images = {
   noResult,
   message,
   logo,
+  logoWhite,
   SMFasad,
 };
 

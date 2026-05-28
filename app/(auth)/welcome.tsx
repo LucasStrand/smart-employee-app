@@ -1,79 +1,202 @@
-import React, { useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
-  FlatList,
   Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Platform,
+  ScrollView,
   Text,
   TouchableOpacity,
   useWindowDimensions,
   View,
 } from "react-native";
+import PagerView from "react-native-pager-view";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/lib/ThemeContext";
-import { onboarding } from "@/constants";
+import { images, onboarding } from "@/constants";
 import { Background } from "@/components/playbook/Background";
 import { LogoMark } from "@/components/playbook/LogoMark";
 
-const slides = [
-  {
-    id: 1,
-    eyebrow: "Smart Teknik",
-    title: "Vår samlade standard",
-    description:
-      "Manualen som beskriver hur vi planerar, projekterar, installerar, märker, bygger och lämnar över.",
-    image: onboarding[0].image,
-  },
-  {
-    id: 2,
-    eyebrow: "Tillsammans",
-    title: "En kompanjon i fält",
-    description:
-      "Alla i teamet – från sälj till support – arbetar efter samma underlag, märkstandard och kvalitetsgrindar.",
-    image: onboarding[1].image,
-  },
-  {
-    id: 3,
-    eyebrow: "Operativt verktyg",
-    title: "Checklistor & arbetsordrar",
-    description:
-      "Egenkontroll, wire checklist, rackritning och as-built – allt nära till hands när du behöver det.",
-    image: onboarding[2].image,
-  },
-];
+type Slide = {
+  id: number;
+  eyebrow: string;
+  title: string;
+  description: string;
+  image: number;
+};
+
+type WebScrollRef = ScrollView & {
+  getScrollableNode?: () => HTMLElement;
+};
 
 const Welcome = () => {
-  const { width } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
   const { colors, mode } = useTheme();
-  const flatListRef = useRef<FlatList<(typeof slides)[number]>>(null);
+  const pagerRef = useRef<PagerView>(null);
+  const webScrollRef = useRef<WebScrollRef | null>(null);
+  const activeIndexRef = useRef(0);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [pageWidth, setPageWidth] = useState(windowWidth);
+
+  const slides = useMemo<Slide[]>(
+    () => [
+      {
+        id: 1,
+        eyebrow: "Smart Teknik",
+        title: "Vår samlade standard",
+        description:
+          "Manualen som beskriver hur vi planerar, projekterar, installerar, märker, bygger och lämnar över.",
+        image: mode === "dark" ? images.logoWhite : onboarding[0].image,
+      },
+      {
+        id: 2,
+        eyebrow: "Tillsammans",
+        title: "En kompanjon i fält",
+        description:
+          "Alla i teamet – från sälj till support – arbetar efter samma underlag, märkstandard och kvalitetsgrindar.",
+        image: onboarding[1].image,
+      },
+      {
+        id: 3,
+        eyebrow: "Operativt verktyg",
+        title: "Checklistor & arbetsordrar",
+        description:
+          "Egenkontroll, wire checklist, rackritning och as-built – allt nära till hands när du behöver det.",
+        image: onboarding[2].image,
+      },
+    ],
+    [mode]
+  );
 
   const isLastSlide = activeIndex === slides.length - 1;
 
-  const handleMomentumScrollEnd = (
-    event: NativeSyntheticEvent<NativeScrollEvent>
-  ) => {
-    setActiveIndex(Math.round(event.nativeEvent.contentOffset.x / width));
-  };
+  const handlePageChange = useCallback((index: number) => {
+    activeIndexRef.current = index;
+    setActiveIndex(index);
+  }, []);
 
-  const goNext = () => {
-    if (isLastSlide) {
+  const scrollWebToIndex = useCallback(
+    (index: number) => {
+      const offset = index * pageWidth;
+      const scroller =
+        (webScrollRef.current as unknown as HTMLElement | null) ??
+        webScrollRef.current?.getScrollableNode?.() ??
+        null;
+
+      if (!scroller || scroller.scrollWidth <= scroller.clientWidth) return;
+
+      const previousSnap = scroller.style.scrollSnapType;
+      scroller.style.scrollSnapType = "none";
+      scroller.scrollTo({ left: offset, behavior: "smooth" });
+      globalThis.setTimeout(() => {
+        scroller.scrollLeft = offset;
+        scroller.style.scrollSnapType = previousSnap || "x mandatory";
+      }, 400);
+    },
+    [pageWidth]
+  );
+
+  const syncWebIndexFromScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (pageWidth <= 0) return;
+
+      const index = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
+      if (index >= 0 && index < slides.length) {
+        handlePageChange(index);
+      }
+    },
+    [handlePageChange, pageWidth, slides.length]
+  );
+
+  const goNext = useCallback(() => {
+    const currentIndex = activeIndexRef.current;
+
+    if (currentIndex >= slides.length - 1) {
       router.replace("/(auth)/sign-in");
       return;
     }
-    flatListRef.current?.scrollToIndex({
-      index: activeIndex + 1,
-      animated: true,
-    });
-  };
+
+    const nextIndex = currentIndex + 1;
+
+    if (Platform.OS === "web") {
+      scrollWebToIndex(nextIndex);
+      handlePageChange(nextIndex);
+      return;
+    }
+
+    pagerRef.current?.setPage(nextIndex);
+  }, [handlePageChange, scrollWebToIndex, slides.length]);
+
+  const renderSlide = useCallback(
+    (item: Slide) => (
+      <View
+        style={{
+          flex: 1,
+          paddingHorizontal: 28,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Image
+          source={item.image}
+          style={{
+            width: pageWidth - 56,
+            height: pageWidth * 0.72,
+            marginTop: 12,
+          }}
+          resizeMode="contain"
+        />
+
+        <Text
+          style={{
+            color: colors.brand,
+            fontFamily: "Jakarta-Bold",
+            fontSize: 11,
+            letterSpacing: 1.4,
+            textTransform: "uppercase",
+            marginTop: 32,
+          }}
+        >
+          {item.eyebrow}
+        </Text>
+        <Text
+          style={{
+            color: colors.text,
+            fontFamily: "Jakarta-ExtraBold",
+            fontSize: 26,
+            letterSpacing: -0.6,
+            textAlign: "center",
+            marginTop: 8,
+            paddingHorizontal: 16,
+          }}
+        >
+          {item.title}
+        </Text>
+        <Text
+          style={{
+            color: colors.textMuted,
+            fontFamily: "Jakarta",
+            fontSize: 15,
+            lineHeight: 22,
+            textAlign: "center",
+            marginTop: 10,
+            paddingHorizontal: 12,
+            maxWidth: 360,
+          }}
+        >
+          {item.description}
+        </Text>
+      </View>
+    ),
+    [colors.brand, colors.text, colors.textMuted, pageWidth]
+  );
 
   return (
     <Background>
       <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
-        {/* Top bar */}
         <View
           style={{
             flexDirection: "row",
@@ -113,122 +236,53 @@ const Welcome = () => {
           </TouchableOpacity>
         </View>
 
-        <View style={{ flex: 1 }}>
-          <FlatList
-            ref={flatListRef}
-            data={slides}
-            horizontal
-            pagingEnabled
-            bounces={false}
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item.id.toString()}
-            onMomentumScrollEnd={handleMomentumScrollEnd}
-            renderItem={({ item }) => (
-              <View
-                style={{
-                  width,
-                  paddingHorizontal: 24,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {/* Image stage */}
-                <View
-                  style={{
-                    width: width - 60,
-                    height: width - 80,
-                    borderRadius: 32,
-                    backgroundColor: colors.surface,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    overflow: "hidden",
-                    marginTop: 20,
-                  }}
-                >
-                  {/* Decorative blobs */}
-                  <View
-                    pointerEvents="none"
-                    style={{
-                      position: "absolute",
-                      top: -50,
-                      right: -50,
-                      width: 200,
-                      height: 200,
-                      borderRadius: 999,
-                      backgroundColor: colors.brand,
-                      opacity: mode === "dark" ? 0.12 : 0.08,
-                    }}
-                  />
-                  <View
-                    pointerEvents="none"
-                    style={{
-                      position: "absolute",
-                      bottom: -60,
-                      left: -60,
-                      width: 220,
-                      height: 220,
-                      borderRadius: 999,
-                      backgroundColor: colors.brand,
-                      opacity: mode === "dark" ? 0.05 : 0.04,
-                    }}
-                  />
-                  <Image
-                    source={item.image}
-                    style={{
-                      width: "85%",
-                      height: "85%",
-                      resizeMode: "contain",
-                    }}
-                  />
+        <View
+          style={{ flex: 1 }}
+          onLayout={(event) => {
+            const nextWidth = Math.round(event.nativeEvent.layout.width);
+            if (nextWidth > 0) {
+              setPageWidth(nextWidth);
+            }
+          }}
+        >
+          {Platform.OS === "web" ? (
+            <ScrollView
+              ref={webScrollRef}
+              horizontal
+              pagingEnabled
+              bounces={false}
+              showsHorizontalScrollIndicator={false}
+              scrollEventThrottle={16}
+              decelerationRate="fast"
+              onScroll={syncWebIndexFromScroll}
+              onMomentumScrollEnd={syncWebIndexFromScroll}
+              style={{ flex: 1 }}
+            >
+              {slides.map((item) => (
+                <View key={item.id} style={{ width: pageWidth }}>
+                  {renderSlide(item)}
                 </View>
-
-                <Text
-                  style={{
-                    color: colors.brand,
-                    fontFamily: "Jakarta-Bold",
-                    fontSize: 11,
-                    letterSpacing: 1.4,
-                    textTransform: "uppercase",
-                    marginTop: 28,
-                  }}
-                >
-                  {item.eyebrow}
-                </Text>
-                <Text
-                  style={{
-                    color: colors.text,
-                    fontFamily: "Jakarta-ExtraBold",
-                    fontSize: 26,
-                    letterSpacing: -0.6,
-                    textAlign: "center",
-                    marginTop: 8,
-                    paddingHorizontal: 16,
-                  }}
-                >
-                  {item.title}
-                </Text>
-                <Text
-                  style={{
-                    color: colors.textMuted,
-                    fontFamily: "Jakarta",
-                    fontSize: 15,
-                    lineHeight: 22,
-                    textAlign: "center",
-                    marginTop: 10,
-                    paddingHorizontal: 12,
-                    maxWidth: 360,
-                  }}
-                >
-                  {item.description}
-                </Text>
-              </View>
-            )}
-          />
+              ))}
+            </ScrollView>
+          ) : (
+            <PagerView
+              ref={pagerRef}
+              style={{ flex: 1 }}
+              initialPage={0}
+              overdrag
+              onPageSelected={(event) =>
+                handlePageChange(event.nativeEvent.position)
+              }
+            >
+              {slides.map((item) => (
+                <View key={item.id} collapsable={false} style={{ flex: 1 }}>
+                  {renderSlide(item)}
+                </View>
+              ))}
+            </PagerView>
+          )}
         </View>
 
-        {/* Dots + CTA */}
         <View style={{ paddingHorizontal: 24, paddingBottom: 12 }}>
           <View
             style={{

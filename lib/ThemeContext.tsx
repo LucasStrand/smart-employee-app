@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Appearance, ColorSchemeName } from "react-native";
+import { Appearance, ColorSchemeName, Platform } from "react-native";
 
 import {
   ThemeMode,
@@ -111,6 +111,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
     }),
     [mode, appearance, setAppearance, toggle]
   );
+
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    document.documentElement.style.backgroundColor = value.colors.bg;
+    document.body.style.backgroundColor = value.colors.bg;
+  }, [value.colors.bg]);
 
   return (
     <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
