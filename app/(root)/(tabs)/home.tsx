@@ -1,58 +1,51 @@
 import React, { useEffect, useState } from "react";
 import {
-  SafeAreaView,
-  Text,
-  View,
-  Image,
   ActivityIndicator,
+  ScrollView,
+  Text,
   TouchableOpacity,
-  FlatList,
-  Modal,
+  View,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import TodoList from "@/components/Todo/TodoList";
-import { fetchAPI } from "@/lib/fetch";
-import { ApiType } from "@/lib/apiConfig";
-import { icons } from "@/constants";
 import { useRouter } from "expo-router";
-import CustomButton from "@/components/CustomButton";
-import { getRandomEmoji } from "@/lib/getRandomEmoji";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 
-interface Todo {
-  id: string;
-  text: string;
-  completed: boolean;
-}
+import { useTheme } from "@/lib/ThemeContext";
+import { ApiType } from "@/lib/apiConfig";
+import { fetchAPI } from "@/lib/fetch";
+import {
+  categories,
+  chapters,
+  getChapter,
+  manualMeta,
+} from "@/lib/manual";
+import { useBookmarks } from "@/lib/useBookmarks";
 
-interface TodoListType {
-  id: string;
-  name: string;
-  description: string;
-  todos: Todo[];
-}
+import { Background } from "@/components/playbook/Background";
+import { CategoryCard } from "@/components/playbook/CategoryCard";
+import { ChapterRow } from "@/components/playbook/ChapterRow";
+import { LogoMark } from "@/components/playbook/LogoMark";
+import { Pill } from "@/components/playbook/Pill";
+import { SearchBar } from "@/components/playbook/SearchBar";
+import { SectionHeader } from "@/components/playbook/SectionHeader";
+import { StatTile } from "@/components/playbook/StatTile";
 
 const Home = () => {
   const router = useRouter();
+  const { colors, mode } = useTheme();
+  const { recent, isBookmarked, toggleBookmark } = useBookmarks();
+
   const [userName, setUserName] = useState<string | null>(null);
-  const [randomEmoji, setRandomEmoji] = useState<string>("");
-
-  const [todolists, setTodoLists] = useState<TodoListType[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  // For “last item” modal
-  const [showLastItemModal, setShowLastItemModal] = useState(false);
-  const [pendingTodo, setPendingTodo] = useState<{
-    todoId: string;
-    listId: string;
-  } | null>(null);
+  const [search, setSearch] = useState("");
 
-  // Load user from Graph
   useEffect(() => {
     const loadUserFromGraph = async () => {
       try {
         const token = await AsyncStorage.getItem("access_token");
         if (!token) {
-          handleSignOut();
+          setLoading(false);
           return;
         }
         const userData = await fetchAPI(
@@ -60,327 +53,364 @@ const Home = () => {
           { method: "GET" },
           ApiType.GRAPH
         );
-        setUserName(userData.givenName || "Användare");
-        setRandomEmoji(getRandomEmoji());
-      } catch (err) {
-        handleSignOut();
+        setUserName(userData?.givenName ?? null);
+      } catch {
+        // graceful fallback
+      } finally {
+        setLoading(false);
       }
     };
     loadUserFromGraph();
   }, []);
 
-  // Fetch assigned to-do lists
-  useEffect(() => {
-    const fetchAssignedTodoLists = async () => {
-      try {
-        const userId = await AsyncStorage.getItem("local_user_id");
-        if (!userId) throw new Error("No local_user_id found.");
+  const recentChapters = (
+    recent.length
+      ? recent.map((id: string) => getChapter(id)).filter(Boolean)
+      : chapters.slice(0, 3)
+  ) as ReturnType<typeof getChapter>[];
 
-        const response = await fetchAPI(
-          `/assigned-todolist?user_id=${userId}`,
-          { method: "GET" }
-        );
-        setTodoLists(response);
-      } catch (err) {
-        setError("Failed to load your to-do lists.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAssignedTodoLists();
-  }, []);
-
-  // If not last item, just do the toggle. If last item, prompt modal first.
-  const attemptToggle = (todoId: string, newValue: boolean, listId: string) => {
-    if (!newValue) {
-      // user is unchecking a completed item => no confirmation needed
-      doToggle(todoId, newValue, listId);
-      return;
-    }
-
-    // user wants to check a (probably incomplete) item => see if it's last incomplete
-    const foundList = todolists.find((l) => l.id === listId);
-    if (!foundList) {
-      // just do normal toggle
-      doToggle(todoId, newValue, listId);
-      return;
-    }
-
-    // how many are incomplete?
-    const incompleteCount = foundList.todos.filter((t) => !t.completed).length;
-    if (incompleteCount === 1) {
-      // It's the last incomplete => show modal
-      setPendingTodo({ todoId, listId });
-      setShowLastItemModal(true);
-    } else {
-      // Just do normal toggle
-      doToggle(todoId, newValue, listId);
-    }
-  };
-
-  // Actually set the item to completed = newValue
-  const doToggle = async (todoId: string, newVal: boolean, listId: string) => {
-    try {
-      // 1) Update the single task in the backend
-      await fetchAPI("/todolist", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: todoId, completed: newVal }),
-      });
-
-      // 2) Update local state
-      setTodoLists((prevLists) =>
-        prevLists.map((list) => {
-          if (list.id === listId) {
-            return {
-              ...list,
-              todos: list.todos.map((todo) =>
-                todo.id === todoId ? { ...todo, completed: newVal } : todo
-              ),
-            };
-          }
-          return list;
-        })
-      );
-
-      // 3) If it's newly completed, check if entire list is done => archive
-      if (newVal) {
-        archiveCheck(listId);
-      }
-    } catch (err) {
-      console.error("Error toggling task:", err);
-    }
-  };
-
-  // archiveCheck => if entire list is done => archive
-  const archiveCheck = (listId: string) => {
-    const theList = todolists.find((l) => l.id === listId);
-    if (!theList) return;
-
-    const allDone = theList.todos.every((t) => t.completed);
-    if (allDone) {
-      // call archive
-      archiveTodolist(listId);
-    }
-  };
-
-  // call /archive-todolist
-  const archiveTodolist = async (todoListId: string) => {
-    try {
-      const response = await fetchAPI("/archive-todolist", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ todoListId }),
-      });
-      if (response?.message === "To-Do list archived successfully") {
-        // remove from local state
-        setTodoLists((prev) => prev.filter((l) => l.id !== todoListId));
-      }
-    } catch (error) {
-      console.error("Error archiving todo list:", error);
-    }
-  };
-
-  // user taps close icon => unassign
-  const handleUnassign = async (todoListId: string) => {
-    try {
-      const response = await fetchAPI("/assigned-todolist", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ todoListId }),
-      });
-      if (response?.message === "Todo list unassigned successfully") {
-        const userId = await AsyncStorage.getItem("local_user_id");
-        if (!userId) return;
-        const updatedLists = await fetchAPI(
-          `/assigned-todolist?user_id=${userId}`,
-          { method: "GET" }
-        );
-        setTodoLists(updatedLists);
-      }
-    } catch (error) {
-      console.error("Error unassigning list:", error);
-    }
-  };
-
-  // user taps "remove" => show remove modal
-  const [showRemoveModal, setShowRemoveModal] = useState(false);
-  const [removeListId, setRemoveListId] = useState<string | null>(null);
-
-  const confirmRemoveList = (listId: string) => {
-    setRemoveListId(listId);
-    setShowRemoveModal(true);
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await AsyncStorage.removeItem("access_token");
-      router.replace("/(auth)/sign-in");
-    } catch (error) {
-      console.error("Error during sign-out:", error);
-    }
-  };
+  const greeting = (() => {
+    const hour = new Date().getHours();
+    if (hour < 6) return "God natt";
+    if (hour < 11) return "God morgon";
+    if (hour < 17) return "Hej";
+    if (hour < 22) return "God kväll";
+    return "God natt";
+  })();
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" />
-      </SafeAreaView>
-    );
-  }
-
-  if (error) {
-    return (
-      <SafeAreaView className="flex-1 p-4 bg-white">
-        <Text className="text-red-500">{error}</Text>
-        <TouchableOpacity onPress={handleSignOut}>
-          <Text className="text-blue-500 underline mt-2">
-            Logga ut och försök igen
-          </Text>
-        </TouchableOpacity>
+      <SafeAreaView
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: colors.bg,
+        }}
+      >
+        <ActivityIndicator color={colors.brand} size="large" />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      {/* Greeting + search */}
-      <View className="flex flex-row items-center justify-between my-2 px-3">
-        <Text className="text-2xl font-bold">
-          {userName || "Användare"} Checklistor {randomEmoji}
-        </Text>
-        <TouchableOpacity
-          onPress={() => router.push("/browse-workorders")}
-          className="w-10 h-10 justify-center items-center rounded-full bg-white"
+    <Background>
+      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 140 }}
         >
-          <Image source={icons.search} className="w-5 h-5" />
-        </TouchableOpacity>
-      </View>
-
-      <FlatList
-        className="pt-4 px-2"
-        contentContainerStyle={{ paddingBottom: 78 }}
-        data={todolists}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TodoList
-            listId={item.id}
-            data={item.todos}
-            name={item.name}
-            description={item.description}
-            // Instead of onToggle => attemptToggle
-            onToggle={(todoId: string, newVal: boolean, listId: string) =>
-              attemptToggle(todoId, newVal, listId)
-            }
-            onUnassign={() => confirmRemoveList(item.id)}
-          />
-        )}
-      />
-
-      {/* Remove Modal */}
-      <Modal
-        visible={showRemoveModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          setShowRemoveModal(false);
-          setRemoveListId(null);
-        }}
-      >
-        <View
-          className="flex-1 justify-center px-5"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
-        >
-          <View className="bg-white px-7 py-9 rounded-2xl min-h-[240px]">
-            <Text className="text-2xl font-bold text-center mb-2">
-              Ta bort checklista?
-            </Text>
-            <Text className="text-base text-gray-500 text-center">
-              Är du säker på att du vill ta bort denna checklista?
-            </Text>
-
-            <View className="flex-row justify-center mt-6">
-              <CustomButton
-                title="Avbryt"
-                bgVariant="outline"
-                textVariant="primary"
-                onPress={() => {
-                  setShowRemoveModal(false);
-                  setRemoveListId(null);
-                }}
-                className="mx-2"
+          {/* Top bar */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingHorizontal: 20,
+              paddingTop: 10,
+            }}
+          >
+            <LogoMark
+              size={40}
+              showWordmark
+              wordmark="Smart Teknik"
+              subtitle="Standard"
+            />
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => router.push("/(root)/(tabs)/profile")}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 14,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            >
+              <Ionicons
+                name="notifications-outline"
+                size={18}
+                color={colors.text}
               />
-              <CustomButton
-                title="Ta Bort"
-                onPress={() => {
-                  if (removeListId) {
-                    handleUnassign(removeListId);
-                  }
-                  setShowRemoveModal(false);
-                  setRemoveListId(null);
+              <View
+                style={{
+                  position: "absolute",
+                  top: 9,
+                  right: 9,
+                  width: 8,
+                  height: 8,
+                  borderRadius: 999,
+                  backgroundColor: colors.brand,
+                  borderWidth: 1.5,
+                  borderColor: colors.surface,
                 }}
-                bgVariant="danger"
-                className="mx-2"
               />
+            </TouchableOpacity>
+          </View>
+
+          {/* Hero */}
+          <View style={{ paddingHorizontal: 20, marginTop: 26 }}>
+            <Text
+              style={{
+                color: colors.brand,
+                fontFamily: "Jakarta-Bold",
+                fontSize: 11,
+                letterSpacing: 1.4,
+                textTransform: "uppercase",
+              }}
+            >
+              Intern standard · {manualMeta.version}
+            </Text>
+            <Text
+              style={{
+                color: colors.text,
+                fontFamily: "Jakarta-ExtraBold",
+                fontSize: 30,
+                lineHeight: 36,
+                letterSpacing: -0.9,
+                marginTop: 8,
+              }}
+            >
+              {greeting}
+              {userName ? `, ${userName}` : ""}.{"\n"}
+              <Text style={{ color: colors.brand }}>Så här arbetar vi.</Text>
+            </Text>
+            <Text
+              style={{
+                color: colors.textMuted,
+                fontFamily: "Jakarta",
+                fontSize: 14.5,
+                lineHeight: 22,
+                marginTop: 10,
+                maxWidth: 360,
+              }}
+            >
+              {manualMeta.description}
+            </Text>
+          </View>
+
+          {/* Search */}
+          <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
+            <SearchBar
+              value={search}
+              onChangeText={(t) => {
+                setSearch(t);
+                if (t.trim().length > 0) {
+                  router.push({
+                    pathname: "/(root)/(tabs)/search",
+                    params: { q: t },
+                  });
+                }
+              }}
+              placeholder="Sök i manualen…"
+              showFilter
+              onFilterPress={() => router.push("/(root)/(tabs)/library")}
+            />
+          </View>
+
+          {/* Stat strip */}
+          <View
+            style={{
+              flexDirection: "row",
+              gap: 10,
+              paddingHorizontal: 20,
+              marginTop: 18,
+            }}
+          >
+            <StatTile
+              accent
+              label="Kapitel"
+              value={String(chapters.length)}
+            />
+            <StatTile
+              label="Kategorier"
+              value={String(categories.length)}
+            />
+            <StatTile
+              label="Faser"
+              value="6"
+            />
+          </View>
+
+          {/* Categories */}
+          <View style={{ paddingHorizontal: 20, marginTop: 30 }}>
+            <SectionHeader
+              title="Bläddra efter kategori"
+              actionLabel="Visa alla"
+              onActionPress={() => router.push("/(root)/(tabs)/library")}
+            />
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+              {categories.map((cat) => (
+                <View
+                  key={cat.id}
+                  style={{ width: "48.5%", marginBottom: 0 }}
+                >
+                  <CategoryCard
+                    category={cat}
+                    chapterCount={cat.chapterIds.length}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(root)/category/[id]",
+                        params: { id: cat.id },
+                      })
+                    }
+                  />
+                </View>
+              ))}
             </View>
           </View>
-        </View>
-      </Modal>
 
-      {/* Last Incomplete Item Modal */}
-      <Modal
-        visible={showLastItemModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          setPendingTodo(null);
-          setShowLastItemModal(false);
-        }}
-      >
-        <View
-          className="flex-1 justify-center px-5"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
-        >
-          <View className="bg-white px-7 py-9 rounded-2xl min-h-[220px]">
-            <Text className="text-2xl font-bold text-center mb-2">
-              Markera sista uppgiften?
-            </Text>
-            <Text className="text-base text-gray-500 text-center">
-              Detta är den sista uppgiften i checklistan. Om du fortsätter
-              kommer den att markeras som klar och checklistan arkiveras.
-            </Text>
-
-            <View className="flex-row justify-center mt-6">
-              {/* Avbryt */}
-              <CustomButton
-                title="Avbryt"
-                bgVariant="outline"
-                textVariant="primary"
-                onPress={() => {
-                  setPendingTodo(null);
-                  setShowLastItemModal(false);
-                }}
-                className="mx-2"
-              />
-              {/* OK => finalize toggle */}
-              <CustomButton
-                title="OK"
-                bgVariant="success"
-                onPress={() => {
-                  if (pendingTodo) {
-                    // Actually do the final toggle now
-                    doToggle(pendingTodo.todoId, true, pendingTodo.listId);
-                  }
-                  setPendingTodo(null);
-                  setShowLastItemModal(false);
-                }}
-                className="mx-2"
-              />
+          {/* Recently updated / recently read */}
+          <View style={{ paddingHorizontal: 20, marginTop: 30 }}>
+            <SectionHeader
+              title={recent.length ? "Senast läst" : "Senast uppdaterat"}
+              actionLabel="Visa alla"
+              onActionPress={() => router.push("/(root)/(tabs)/library")}
+            />
+            <View style={{ gap: 10 }}>
+              {recentChapters.slice(0, 4).map(
+                (c) =>
+                  c && (
+                    <ChapterRow
+                      key={c.id}
+                      chapter={c}
+                      bookmarked={isBookmarked(c.id)}
+                      onToggleBookmark={() => toggleBookmark(c.id)}
+                      showCategoryBadge
+                      onPress={() =>
+                        router.push({
+                          pathname: "/(root)/chapter/[id]",
+                          params: { id: c.id },
+                        })
+                      }
+                    />
+                  )
+              )}
             </View>
           </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+
+          {/* Tools */}
+          <View style={{ paddingHorizontal: 20, marginTop: 30 }}>
+            <SectionHeader
+              title="Verktyg"
+              eyebrow="För arbete på plats"
+            />
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => router.push("/(root)/browse-workorders")}
+              style={{
+                padding: 18,
+                borderRadius: 18,
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.border,
+                overflow: "hidden",
+              }}
+            >
+              <View
+                pointerEvents="none"
+                style={{
+                  position: "absolute",
+                  top: -40,
+                  right: -40,
+                  width: 160,
+                  height: 160,
+                  borderRadius: 999,
+                  backgroundColor: colors.brand,
+                  opacity: mode === "dark" ? 0.08 : 0.06,
+                }}
+              />
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 14,
+                }}
+              >
+                <View
+                  style={{
+                    width: 46,
+                    height: 46,
+                    borderRadius: 14,
+                    backgroundColor: colors.brandGlow,
+                    borderWidth: 1,
+                    borderColor: colors.borderBrand,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons
+                    name="clipboard-outline"
+                    size={22}
+                    color={colors.brand}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      color: colors.text,
+                      fontFamily: "Jakarta-Bold",
+                      fontSize: 16,
+                      letterSpacing: -0.2,
+                    }}
+                  >
+                    Arbetsordrar & checklistor
+                  </Text>
+                  <Text
+                    style={{
+                      color: colors.textMuted,
+                      fontFamily: "Jakarta",
+                      fontSize: 13,
+                      marginTop: 2,
+                    }}
+                  >
+                    Tilldelade uppgifter och egenkontroll
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={colors.textSubtle}
+                />
+              </View>
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: 8,
+                  marginTop: 14,
+                }}
+              >
+                <Pill label="Wire checklist" />
+                <Pill label="Egenkontroll" />
+                <Pill label="As-built" variant="outline" />
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Footer */}
+          <View
+            style={{
+              paddingHorizontal: 20,
+              marginTop: 30,
+              alignItems: "center",
+            }}
+          >
+            <Text
+              style={{
+                color: colors.textSubtle,
+                fontFamily: "Jakarta",
+                fontSize: 12,
+              }}
+            >
+              {manualMeta.title} · {manualMeta.version} · {manualMeta.updatedAt}
+            </Text>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </Background>
   );
 };
 
