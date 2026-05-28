@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/lib/ThemeContext";
@@ -9,7 +8,7 @@ import { chapters, getChapter } from "@/lib/manual";
 import type { Block } from "@/lib/manual";
 import { useBookmarks } from "@/lib/useBookmarks";
 
-import { Background } from "@/components/playbook/Background";
+import { CollapsibleScreen } from "@/components/playbook/CollapsibleScreen";
 import { ChapterRow } from "@/components/playbook/ChapterRow";
 import { ScreenHeader } from "@/components/playbook/ScreenHeader";
 import { SearchBar } from "@/components/playbook/SearchBar";
@@ -101,32 +100,32 @@ const Search = () => {
   }, [query, searchIndex]);
 
   return (
-    <Background>
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-        <ScreenHeader
-          eyebrow="Sök"
-          title="Hitta i manualen"
-          subtitle="Sök på begrepp, system, fas eller rolltyp."
-        />
-
-        <View style={{ paddingHorizontal: 20 }}>
-          <SearchBar
-            value={query}
-            onChangeText={setQuery}
-            autoFocus={!query}
-            placeholder="Sök på t.ex. PoE, BTU, rack…"
+    <CollapsibleScreen
+      header={
+        <>
+          <ScreenHeader
+            eyebrow="Sök"
+            title="Hitta i manualen"
+            subtitle="Sök på begrepp, system, fas eller rolltyp."
           />
-        </View>
-
-        <ScrollView
-          contentContainerStyle={{
-            paddingHorizontal: 20,
-            paddingTop: 22,
-            paddingBottom: 140,
-          }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
+          <View style={{ paddingHorizontal: 20, paddingBottom: 8 }}>
+            <SearchBar
+              value={query}
+              onChangeText={setQuery}
+              autoFocus={!query}
+              placeholder="Sök på t.ex. PoE, BTU, rack…"
+            />
+          </View>
+        </>
+      }
+      scrollProps={{
+        keyboardShouldPersistTaps: "handled",
+        contentContainerStyle: {
+          paddingHorizontal: 20,
+          paddingTop: 22,
+        },
+      }}
+    >
           {query.trim().length === 0 ? (
             <>
               {recentSearches.length > 0 && (
@@ -336,9 +335,7 @@ const Search = () => {
               )}
             </View>
           )}
-        </ScrollView>
-      </SafeAreaView>
-    </Background>
+    </CollapsibleScreen>
   );
 };
 

@@ -5,6 +5,7 @@ import {
   ScrollView,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -17,11 +18,12 @@ import { useTheme } from "@/lib/ThemeContext";
 import { images } from "@/constants";
 import { fetchAPI } from "@/lib/fetch";
 import { Background } from "@/components/playbook/Background";
-import { LogoMark } from "@/components/playbook/LogoMark";
 
 const SignIn = () => {
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const { colors, mode } = useTheme();
+  const logoSource = mode === "dark" ? images.logoWhite : images.logo;
 
   const CLIENT_ID = "25e06da5-7be9-41d6-b000-ffde4e36069a";
   const TENANT_ID = "efacdbb3-8b4e-4d16-8110-4bfb66410cd7";
@@ -116,125 +118,62 @@ const SignIn = () => {
     <Background>
       <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
         <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingHorizontal: 28,
+            paddingBottom: 28,
+          }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Hero image */}
           <View
             style={{
-              height: 280,
-              marginHorizontal: 20,
-              marginTop: 14,
-              borderRadius: 26,
-              overflow: "hidden",
-              borderWidth: 1,
-              borderColor: colors.border,
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "center",
+              paddingTop: 24,
+              paddingBottom: 32,
             }}
           >
             <Image
-              source={images.SMFasad}
-              style={{ width: "100%", height: "100%" }}
-              resizeMode="cover"
-            />
-            <View
-              pointerEvents="none"
+              source={logoSource}
               style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                bottom: 0,
-                top: 0,
-                backgroundColor: colors.overlayScrim,
+                width: width - 56,
+                height: (width - 56) * 0.55,
+                maxWidth: 420,
+                maxHeight: 220,
+                resizeMode: "contain",
               }}
             />
-            <View
-              style={{
-                position: "absolute",
-                top: 18,
-                left: 18,
-              }}
-            >
-              <LogoMark
-                size={40}
-                showWordmark
-                wordmark="Smart Teknik"
-                subtitle="Standard"
-              />
-            </View>
-            <View
-              style={{
-                position: "absolute",
-                left: 18,
-                right: 18,
-                bottom: 18,
-              }}
-            >
-              <Text
-                style={{
-                  color: "#fff",
-                  fontFamily: "Jakarta-ExtraBold",
-                  fontSize: 26,
-                  letterSpacing: -0.6,
-                }}
-              >
-                Välkommen tillbaka
-              </Text>
-              <Text
-                style={{
-                  color: "rgba(255,255,255,0.85)",
-                  fontFamily: "Jakarta",
-                  fontSize: 13.5,
-                  marginTop: 4,
-                  maxWidth: 320,
-                  lineHeight: 20,
-                }}
-              >
-                Logga in med ditt Microsoft-konto för att komma åt manualen,
-                checklistor och arbetsordrar.
-              </Text>
-            </View>
-          </View>
 
-          <View style={{ paddingHorizontal: 20, marginTop: 26, flex: 1 }}>
-            {/* Highlights */}
             <Text
               style={{
-                color: colors.textSubtle,
-                fontFamily: "Jakarta-Bold",
-                fontSize: 11,
-                letterSpacing: 1.2,
-                textTransform: "uppercase",
-                marginBottom: 12,
+                color: colors.text,
+                fontFamily: "Jakarta-ExtraBold",
+                fontSize: 28,
+                letterSpacing: -0.6,
+                textAlign: "center",
+                marginTop: 36,
               }}
             >
-              Det här finns i appen
+              Välkommen tillbaka
             </Text>
-            <View style={{ gap: 10 }}>
-              <Highlight
-                icon="book-outline"
-                title="Hela vår standard"
-                description="16 kapitel om hur vi arbetar – från projektfas till överlämning."
-              />
-              <Highlight
-                icon="git-network-outline"
-                title="Kabel- och nätverksregler"
-                description="Märkstandard, separation, färgkoder och rackstandard."
-              />
-              <Highlight
-                icon="clipboard-outline"
-                title="Arbetsordrar"
-                description="Tilldelade uppgifter och checklistor från projektledning."
-              />
-            </View>
+            <Text
+              style={{
+                color: colors.textMuted,
+                fontFamily: "Jakarta",
+                fontSize: 15,
+                lineHeight: 22,
+                textAlign: "center",
+                marginTop: 10,
+                maxWidth: 340,
+              }}
+            >
+              Logga in med ditt Microsoft-konto för att komma åt manualen,
+              checklistor och arbetsordrar.
+            </Text>
           </View>
 
-          <View
-            style={{
-              paddingHorizontal: 20,
-              paddingBottom: 28,
-              paddingTop: 24,
-            }}
-          >
+          <View style={{ paddingTop: 8 }}>
             <TouchableOpacity
               activeOpacity={0.9}
               onPress={handleSignIn}
@@ -270,7 +209,7 @@ const SignIn = () => {
                 fontSize: 12,
                 textAlign: "center",
                 marginTop: 14,
-                paddingHorizontal: 30,
+                paddingHorizontal: 12,
                 lineHeight: 18,
               }}
             >
@@ -281,65 +220,6 @@ const SignIn = () => {
         </ScrollView>
       </SafeAreaView>
     </Background>
-  );
-};
-
-const Highlight: React.FC<{
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  description: string;
-}> = ({ icon, title, description }) => {
-  const { colors } = useTheme();
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 14,
-        padding: 14,
-        borderRadius: 16,
-        backgroundColor: colors.surface,
-        borderWidth: 1,
-        borderColor: colors.border,
-      }}
-    >
-      <View
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: 12,
-          backgroundColor: colors.brandGlow,
-          borderWidth: 1,
-          borderColor: colors.borderBrand,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Ionicons name={icon} size={18} color={colors.brand} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text
-          style={{
-            color: colors.text,
-            fontFamily: "Jakarta-Bold",
-            fontSize: 14.5,
-            letterSpacing: -0.2,
-          }}
-        >
-          {title}
-        </Text>
-        <Text
-          style={{
-            color: colors.textMuted,
-            fontFamily: "Jakarta",
-            fontSize: 12.5,
-            marginTop: 2,
-          }}
-        >
-          {description}
-        </Text>
-      </View>
-    </View>
   );
 };
 

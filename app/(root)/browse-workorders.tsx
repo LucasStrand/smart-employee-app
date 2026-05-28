@@ -2,21 +2,19 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/lib/ThemeContext";
 import { fetchAPI } from "@/lib/fetch";
 import { ToDoList } from "@/types/type";
 
-import { Background } from "@/components/playbook/Background";
+import { CollapsibleScreen } from "@/components/playbook/CollapsibleScreen";
 import { ScreenHeader } from "@/components/playbook/ScreenHeader";
 import { SearchBar } from "@/components/playbook/SearchBar";
 import { Pill } from "@/components/playbook/Pill";
@@ -77,42 +75,44 @@ const BrowseWorkOrders = () => {
   };
 
   return (
-    <Background>
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-        <ScreenHeader
-          onBack={() => router.back()}
-          eyebrow="Verktyg"
-          title="Arbetsordrar"
-          subtitle="Tilldela tillgängliga checklistor till dig själv."
-        />
-
-        <View style={{ paddingHorizontal: 20 }}>
-          <SearchBar
-            value={searchQuery}
-            onChangeText={handleSearch}
-            placeholder="Sök arbetsordrar…"
+    <CollapsibleScreen
+      variant="stack"
+      header={
+        <>
+          <ScreenHeader
+            onBack={() => router.back()}
+            eyebrow="Verktyg"
+            title="Arbetsordrar"
+            subtitle="Tilldela tillgängliga checklistor till dig själv."
           />
-        </View>
-
-        {loading ? (
-          <View
-            style={{
-              alignItems: "center",
-              justifyContent: "center",
-              paddingVertical: 60,
-            }}
-          >
-            <ActivityIndicator color={colors.brand} />
+          <View style={{ paddingHorizontal: 20, paddingBottom: 8 }}>
+            <SearchBar
+              value={searchQuery}
+              onChangeText={handleSearch}
+              placeholder="Sök arbetsordrar…"
+            />
           </View>
-        ) : (
-          <ScrollView
-            contentContainerStyle={{
-              paddingHorizontal: 20,
-              paddingTop: 18,
-              paddingBottom: 80,
-            }}
-            showsVerticalScrollIndicator={false}
-          >
+        </>
+      }
+      scrollProps={{
+        contentContainerStyle: {
+          paddingHorizontal: 20,
+          paddingTop: 18,
+        },
+      }}
+    >
+      {loading ? (
+        <View
+          style={{
+            alignItems: "center",
+            justifyContent: "center",
+            paddingVertical: 60,
+          }}
+        >
+          <ActivityIndicator color={colors.brand} />
+        </View>
+      ) : (
+        <>
             {todolists.length === 0 ? (
               <View
                 style={{
@@ -292,10 +292,9 @@ const BrowseWorkOrders = () => {
                 ))}
               </View>
             )}
-          </ScrollView>
-        )}
-      </SafeAreaView>
-    </Background>
+        </>
+      )}
+    </CollapsibleScreen>
   );
 };
 

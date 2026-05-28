@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/lib/ThemeContext";
@@ -25,15 +24,17 @@ import { useBookmarks } from "@/lib/useBookmarks";
 import { Background } from "@/components/playbook/Background";
 import { CategoryCard } from "@/components/playbook/CategoryCard";
 import { ChapterRow } from "@/components/playbook/ChapterRow";
-import { LogoMark } from "@/components/playbook/LogoMark";
+import { CollapsibleScreen } from "@/components/playbook/CollapsibleScreen";
 import { Pill } from "@/components/playbook/Pill";
 import { SearchBar } from "@/components/playbook/SearchBar";
 import { SectionHeader } from "@/components/playbook/SectionHeader";
 import { StatTile } from "@/components/playbook/StatTile";
+import { getScreenTopPadding } from "@/lib/screenInsets";
 
 const Home = () => {
   const router = useRouter();
   const { colors, mode } = useTheme();
+  const insets = useSafeAreaInsets();
   const { recent, isBookmarked, toggleBookmark } = useBookmarks();
 
   const [userName, setUserName] = useState<string | null>(null);
@@ -80,146 +81,136 @@ const Home = () => {
 
   if (loading) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: colors.bg,
-        }}
-      >
-        <ActivityIndicator color={colors.brand} size="large" />
-      </SafeAreaView>
+      <Background>
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <ActivityIndicator color={colors.brand} size="large" />
+        </View>
+      </Background>
     );
   }
 
   return (
-    <Background>
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 140 }}
+    <CollapsibleScreen
+      header={
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            paddingHorizontal: 20,
+            paddingTop: getScreenTopPadding(insets, 10),
+            paddingBottom: 10,
+          }}
         >
-          {/* Top bar */}
-          <View
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => router.push("/(root)/(tabs)/profile")}
             style={{
-              flexDirection: "row",
+              width: 40,
+              height: 40,
+              borderRadius: 14,
               alignItems: "center",
-              justifyContent: "space-between",
-              paddingHorizontal: 20,
-              paddingTop: 10,
+              justifyContent: "center",
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.border,
             }}
           >
-            <LogoMark
-              size={40}
-              showWordmark
-              wordmark="Smart Teknik"
-              subtitle="Standard"
+            <Ionicons
+              name="notifications-outline"
+              size={18}
+              color={colors.text}
             />
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => router.push("/(root)/(tabs)/profile")}
+            <View
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 14,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: colors.surface,
-                borderWidth: 1,
-                borderColor: colors.border,
+                position: "absolute",
+                top: 9,
+                right: 9,
+                width: 8,
+                height: 8,
+                borderRadius: 999,
+                backgroundColor: colors.brand,
+                borderWidth: 1.5,
+                borderColor: colors.surface,
               }}
-            >
-              <Ionicons
-                name="notifications-outline"
-                size={18}
-                color={colors.text}
-              />
-              <View
-                style={{
-                  position: "absolute",
-                  top: 9,
-                  right: 9,
-                  width: 8,
-                  height: 8,
-                  borderRadius: 999,
-                  backgroundColor: colors.brand,
-                  borderWidth: 1.5,
-                  borderColor: colors.surface,
-                }}
-              />
-            </TouchableOpacity>
-          </View>
-
-          {/* Hero */}
-          <View style={{ paddingHorizontal: 20, marginTop: 26 }}>
-            <Text
-              style={{
-                color: colors.brand,
-                fontFamily: "Jakarta-Bold",
-                fontSize: 11,
-                letterSpacing: 1.4,
-                textTransform: "uppercase",
-              }}
-            >
-              Intern standard · {manualMeta.version}
-            </Text>
-            <Text
-              style={{
-                color: colors.text,
-                fontFamily: "Jakarta-ExtraBold",
-                fontSize: 30,
-                lineHeight: 36,
-                letterSpacing: -0.9,
-                marginTop: 8,
-              }}
-            >
-              {greeting}
-              {userName ? `, ${userName}` : ""}.{"\n"}
-              <Text style={{ color: colors.brand }}>Så här arbetar vi.</Text>
-            </Text>
-            <Text
-              style={{
-                color: colors.textMuted,
-                fontFamily: "Jakarta",
-                fontSize: 14.5,
-                lineHeight: 22,
-                marginTop: 10,
-                maxWidth: 360,
-              }}
-            >
-              {manualMeta.description}
-            </Text>
-          </View>
-
-          {/* Search */}
-          <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
-            <SearchBar
-              value={search}
-              onChangeText={(t) => {
-                setSearch(t);
-                if (t.trim().length > 0) {
-                  router.push({
-                    pathname: "/(root)/(tabs)/search",
-                    params: { q: t },
-                  });
-                }
-              }}
-              placeholder="Sök i manualen…"
-              showFilter
-              onFilterPress={() => router.push("/(root)/(tabs)/library")}
             />
-          </View>
+          </TouchableOpacity>
+        </View>
+      }
+    >
+      <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
+        <Text
+          style={{
+            color: colors.brand,
+            fontFamily: "Jakarta-Bold",
+            fontSize: 11,
+            letterSpacing: 1.4,
+            textTransform: "uppercase",
+          }}
+        >
+          Intern standard · {manualMeta.version}
+        </Text>
+        <Text
+          style={{
+            color: colors.text,
+            fontFamily: "Jakarta-ExtraBold",
+            fontSize: 30,
+            lineHeight: 36,
+            letterSpacing: -0.9,
+            marginTop: 8,
+          }}
+        >
+          {greeting}
+          {userName ? `, ${userName}` : ""}.{"\n"}
+          <Text style={{ color: colors.brand }}>Så här arbetar vi.</Text>
+        </Text>
+        <Text
+          style={{
+            color: colors.textMuted,
+            fontFamily: "Jakarta",
+            fontSize: 14.5,
+            lineHeight: 22,
+            marginTop: 10,
+            maxWidth: 360,
+          }}
+        >
+          {manualMeta.description}
+        </Text>
+      </View>
 
-          {/* Stat strip */}
-          <View
-            style={{
-              flexDirection: "row",
-              gap: 10,
-              paddingHorizontal: 20,
-              marginTop: 18,
-            }}
-          >
+      <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
+        <SearchBar
+          value={search}
+          onChangeText={(t) => {
+            setSearch(t);
+            if (t.trim().length > 0) {
+              router.push({
+                pathname: "/(root)/(tabs)/search",
+                params: { q: t },
+              });
+            }
+          }}
+          placeholder="Sök i manualen…"
+          showFilter
+          onFilterPress={() => router.push("/(root)/(tabs)/library")}
+        />
+      </View>
+
+      {/* Stat strip */}
+      <View
+        style={{
+          flexDirection: "row",
+          gap: 10,
+          paddingHorizontal: 20,
+          marginTop: 18,
+        }}
+      >
             <StatTile
               accent
               label="Kapitel"
@@ -408,9 +399,7 @@ const Home = () => {
               {manualMeta.title} · {manualMeta.version} · {manualMeta.updatedAt}
             </Text>
           </View>
-        </ScrollView>
-      </SafeAreaView>
-    </Background>
+    </CollapsibleScreen>
   );
 };
 

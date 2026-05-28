@@ -8,6 +8,7 @@ interface Props {
   size?: number;
   showWordmark?: boolean;
   wordmark?: string;
+  /** Shown under the wordmark when provided */
   subtitle?: string;
 }
 
@@ -15,7 +16,7 @@ export const LogoMark: React.FC<Props> = ({
   size = 44,
   showWordmark = false,
   wordmark = "Smart Teknik",
-  subtitle = "Standard",
+  subtitle,
 }) => {
   const { colors, mode } = useTheme();
   const logoSource = mode === "dark" ? images.logoWhite : images.logo;
@@ -42,18 +43,20 @@ export const LogoMark: React.FC<Props> = ({
           >
             {wordmark}
           </Text>
-          <Text
-            style={{
-              color: colors.brand,
-              fontFamily: "Jakarta-SemiBold",
-              fontSize: 11,
-              letterSpacing: 1,
-              textTransform: "uppercase",
-              marginTop: 1,
-            }}
-          >
-            {subtitle}
-          </Text>
+          {subtitle ? (
+            <Text
+              style={{
+                color: colors.brand,
+                fontFamily: "Jakarta-SemiBold",
+                fontSize: 11,
+                letterSpacing: 1,
+                textTransform: "uppercase",
+                marginTop: 1,
+              }}
+            >
+              {subtitle}
+            </Text>
+          ) : null}
         </View>
       )}
     </View>

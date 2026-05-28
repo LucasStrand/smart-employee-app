@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
   Alert,
-  ScrollView,
   Switch,
   Text,
   TouchableOpacity,
@@ -9,7 +8,6 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/lib/ThemeContext";
@@ -17,7 +15,7 @@ import { ApiType } from "@/lib/apiConfig";
 import { fetchAPI } from "@/lib/fetch";
 import { clearSession } from "@/lib/auth";
 
-import { Background } from "@/components/playbook/Background";
+import { CollapsibleScreen } from "@/components/playbook/CollapsibleScreen";
 import { ScreenHeader } from "@/components/playbook/ScreenHeader";
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -61,22 +59,21 @@ const Profile = () => {
   };
 
   return (
-    <Background>
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+    <CollapsibleScreen
+      header={
         <ScreenHeader
           eyebrow="Konto"
           title="Inställningar"
           subtitle="Personalisera utseende, aviseringar och tillgänglighet."
         />
-
-        <ScrollView
-          contentContainerStyle={{
-            paddingHorizontal: 20,
-            paddingTop: 6,
-            paddingBottom: 140,
-          }}
-          showsVerticalScrollIndicator={false}
-        >
+      }
+      scrollProps={{
+        contentContainerStyle: {
+          paddingHorizontal: 20,
+          paddingTop: 6,
+        },
+      }}
+    >
           {/* User card */}
           <View
             style={{
@@ -274,9 +271,7 @@ const Profile = () => {
               Logga ut
             </Text>
           </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </Background>
+    </CollapsibleScreen>
   );
 };
 

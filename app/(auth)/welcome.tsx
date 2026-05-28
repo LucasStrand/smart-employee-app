@@ -18,7 +18,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/lib/ThemeContext";
 import { images, onboarding } from "@/constants";
 import { Background } from "@/components/playbook/Background";
-import { LogoMark } from "@/components/playbook/LogoMark";
 
 type Slide = {
   id: number;
@@ -201,17 +200,11 @@ const Welcome = () => {
           style={{
             flexDirection: "row",
             alignItems: "center",
-            justifyContent: "space-between",
+            justifyContent: "flex-end",
             paddingHorizontal: 20,
             paddingTop: 10,
           }}
         >
-          <LogoMark
-            size={36}
-            showWordmark
-            wordmark="Smart Teknik"
-            subtitle="Standard"
-          />
           <TouchableOpacity
             onPress={() => router.replace("/(auth)/sign-in")}
             hitSlop={10}

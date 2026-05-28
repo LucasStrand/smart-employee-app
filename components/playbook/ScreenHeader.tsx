@@ -1,8 +1,10 @@
 import React from "react";
 import { Text, View, TouchableOpacity, ViewStyle } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/lib/ThemeContext";
+import { getScreenTopPadding } from "@/lib/screenInsets";
 
 interface Props {
   title: string;
@@ -26,12 +28,13 @@ export const ScreenHeader: React.FC<Props> = ({
   style,
 }) => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   return (
     <View
       style={[
         {
           paddingHorizontal: 20,
-          paddingTop: 4,
+          paddingTop: getScreenTopPadding(insets, 4),
           paddingBottom: 14,
         },
         style,

@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/lib/ThemeContext";
@@ -13,8 +12,8 @@ import {
 } from "@/lib/manual";
 import { useBookmarks } from "@/lib/useBookmarks";
 
-import { Background } from "@/components/playbook/Background";
 import { ChapterRow } from "@/components/playbook/ChapterRow";
+import { CollapsibleScreen } from "@/components/playbook/CollapsibleScreen";
 import { ScreenHeader } from "@/components/playbook/ScreenHeader";
 
 const Library = () => {
@@ -35,74 +34,73 @@ const Library = () => {
     : colors.brandGlow;
 
   return (
-    <Background>
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-        <ScreenHeader
-          eyebrow={`Manual · ${manualMeta.version}`}
-          title="Bibliotek"
-          subtitle={`${chapters.length} kapitel uppdelade i ${categories.length} kategorier`}
-        />
-
-        {/* Category pills */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: 20,
-            paddingVertical: 4,
-            gap: 8,
-          }}
-        >
-          {categories.map((cat) => {
-            const isActive = cat.id === activeCat;
-            const localTint = colors[cat.colorKey] as string;
-            const localBg = colors[
-              `${cat.colorKey}Bg` as keyof typeof colors
-            ] as string;
-            return (
-              <TouchableOpacity
-                key={cat.id}
-                activeOpacity={0.8}
-                onPress={() => setActiveCat(cat.id)}
-                style={{
-                  paddingHorizontal: 14,
-                  paddingVertical: 9,
-                  borderRadius: 999,
-                  backgroundColor: isActive ? localBg : colors.surface,
-                  borderWidth: 1,
-                  borderColor: isActive ? `${localTint}66` : colors.border,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
-                <Ionicons
-                  name={cat.iconName as any}
-                  size={14}
-                  color={isActive ? localTint : colors.textMuted}
-                />
-                <Text
+    <CollapsibleScreen
+      header={
+        <>
+          <ScreenHeader
+            eyebrow={`Manual · ${manualMeta.version}`}
+            title="Bibliotek"
+            subtitle={`${chapters.length} kapitel uppdelade i ${categories.length} kategorier`}
+          />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingHorizontal: 20,
+              paddingVertical: 4,
+              gap: 8,
+            }}
+          >
+            {categories.map((cat) => {
+              const isActive = cat.id === activeCat;
+              const localTint = colors[cat.colorKey] as string;
+              const localBg = colors[
+                `${cat.colorKey}Bg` as keyof typeof colors
+              ] as string;
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  activeOpacity={0.8}
+                  onPress={() => setActiveCat(cat.id)}
                   style={{
-                    color: isActive ? localTint : colors.textMuted,
-                    fontFamily: isActive ? "Jakarta-Bold" : "Jakarta-SemiBold",
-                    fontSize: 13,
+                    paddingHorizontal: 14,
+                    paddingVertical: 9,
+                    borderRadius: 999,
+                    backgroundColor: isActive ? localBg : colors.surface,
+                    borderWidth: 1,
+                    borderColor: isActive ? `${localTint}66` : colors.border,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
                   }}
                 >
-                  {cat.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        <ScrollView
-          contentContainerStyle={{
-            paddingHorizontal: 20,
-            paddingTop: 18,
-            paddingBottom: 140,
-          }}
-          showsVerticalScrollIndicator={false}
-        >
+                  <Ionicons
+                    name={cat.iconName as any}
+                    size={14}
+                    color={isActive ? localTint : colors.textMuted}
+                  />
+                  <Text
+                    style={{
+                      color: isActive ? localTint : colors.textMuted,
+                      fontFamily: isActive ? "Jakarta-Bold" : "Jakarta-SemiBold",
+                      fontSize: 13,
+                    }}
+                  >
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </>
+      }
+      scrollProps={{
+        contentContainerStyle: {
+          paddingHorizontal: 20,
+          paddingTop: 18,
+        },
+      }}
+    >
           {/* Selected category card */}
           {active && (
             <TouchableOpacity
@@ -214,9 +212,7 @@ const Library = () => {
               />
             ))}
           </View>
-        </ScrollView>
-      </SafeAreaView>
-    </Background>
+    </CollapsibleScreen>
   );
 };
 

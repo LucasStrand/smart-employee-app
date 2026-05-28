@@ -1,13 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  ScrollView,
   Share,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/lib/ThemeContext";
@@ -20,11 +19,14 @@ import {
 import { useBookmarks } from "@/lib/useBookmarks";
 
 import { Background } from "@/components/playbook/Background";
+import { CollapsibleScreen } from "@/components/playbook/CollapsibleScreen";
 import { ContentBlock } from "@/components/playbook/ContentBlock";
+import { getScreenTopPadding } from "@/lib/screenInsets";
 
 const ChapterScreen = () => {
   const router = useRouter();
   const { colors, mode } = useTheme();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const chapter = getChapter(String(id));
   const category = chapter ? getCategory(chapter.categoryId) : undefined;
@@ -45,23 +47,21 @@ const ChapterScreen = () => {
   if (!chapter) {
     return (
       <Background>
-        <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-          <View style={{ padding: 20 }}>
-            <TouchableOpacity onPress={() => router.back()}>
-              <Ionicons name="chevron-back" size={20} color={colors.text} />
-            </TouchableOpacity>
-            <Text
-              style={{
-                color: colors.text,
-                fontFamily: "Jakarta-Bold",
-                fontSize: 22,
-                marginTop: 20,
-              }}
-            >
-              Kapitel saknas
-            </Text>
-          </View>
-        </SafeAreaView>
+        <View style={{ flex: 1, padding: 20, paddingTop: getScreenTopPadding(insets, 20) }}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={20} color={colors.text} />
+          </TouchableOpacity>
+          <Text
+            style={{
+              color: colors.text,
+              fontFamily: "Jakarta-Bold",
+              fontSize: 22,
+              marginTop: 20,
+            }}
+          >
+            Kapitel saknas
+          </Text>
+        </View>
       </Background>
     );
   }
@@ -69,61 +69,23 @@ const ChapterScreen = () => {
   const isB = isBookmarked(chapter.id);
 
   return (
-    <Background>
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-        {/* Top bar */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            paddingHorizontal: 20,
-            paddingTop: 4,
-            paddingBottom: 8,
-          }}
-        >
-          <TouchableOpacity
-            onPress={() => router.back()}
+    <CollapsibleScreen
+      variant="stack"
+      bottomSpacing={32}
+      header={
+        <>
+          <View
             style={{
-              width: 38,
-              height: 38,
-              borderRadius: 12,
+              flexDirection: "row",
               alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.border,
+              justifyContent: "space-between",
+              paddingHorizontal: 20,
+              paddingTop: getScreenTopPadding(insets, 4),
+              paddingBottom: 8,
             }}
           >
-            <Ionicons name="chevron-back" size={18} color={colors.text} />
-          </TouchableOpacity>
-
-          <View style={{ flexDirection: "row", gap: 10 }}>
             <TouchableOpacity
-              onPress={() => toggleBookmark(chapter.id)}
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 12,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: isB ? colors.brandGlow : colors.surface,
-                borderWidth: 1,
-                borderColor: isB ? colors.borderBrand : colors.border,
-              }}
-            >
-              <Ionicons
-                name={isB ? "bookmark" : "bookmark-outline"}
-                size={18}
-                color={isB ? colors.brand : colors.text}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() =>
-                Share.share({
-                  message: `${chapter.title} – Smart Teknik Standard`,
-                })
-              }
+              onPress={() => router.back()}
               style={{
                 width: 38,
                 height: 38,
@@ -135,52 +97,91 @@ const ChapterScreen = () => {
                 borderColor: colors.border,
               }}
             >
-              <Ionicons name="share-outline" size={18} color={colors.text} />
+              <Ionicons name="chevron-back" size={18} color={colors.text} />
             </TouchableOpacity>
-          </View>
-        </View>
 
-        {/* progress strip */}
-        <View
-          style={{
-            marginHorizontal: 20,
-            height: 3,
-            borderRadius: 999,
-            backgroundColor: colors.surfaceMuted,
-            overflow: "hidden",
-            marginBottom: 6,
-          }}
-        >
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => toggleBookmark(chapter.id)}
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 12,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: isB ? colors.brandGlow : colors.surface,
+                  borderWidth: 1,
+                  borderColor: isB ? colors.borderBrand : colors.border,
+                }}
+              >
+                <Ionicons
+                  name={isB ? "bookmark" : "bookmark-outline"}
+                  size={18}
+                  color={isB ? colors.brand : colors.text}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() =>
+                  Share.share({
+                    message: `${chapter.title} – Smart Teknik Standard`,
+                  })
+                }
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 12,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: colors.surface,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <Ionicons name="share-outline" size={18} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
           <View
             style={{
-              width: `${progress * 100}%`,
+              marginHorizontal: 20,
               height: 3,
-              backgroundColor: tint,
               borderRadius: 999,
+              backgroundColor: colors.surfaceMuted,
+              overflow: "hidden",
+              marginBottom: 6,
             }}
-          />
-        </View>
-
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          scrollEventThrottle={32}
-          onScroll={(e) => {
-            const { contentOffset, contentSize, layoutMeasurement } =
-              e.nativeEvent;
-            const total = Math.max(
-              1,
-              contentSize.height - layoutMeasurement.height
-            );
-            const p = Math.min(1, Math.max(0, contentOffset.y / total));
-            setProgress(p);
-          }}
-          contentContainerStyle={{
-            paddingHorizontal: 20,
-            paddingTop: 14,
-            paddingBottom: 200,
-          }}
-        >
-          {/* Hero */}
+          >
+            <View
+              style={{
+                width: `${progress * 100}%`,
+                height: 3,
+                backgroundColor: tint,
+                borderRadius: 999,
+              }}
+            />
+          </View>
+        </>
+      }
+      scrollProps={{
+        scrollEventThrottle: 32,
+        onScroll: (e) => {
+          const { contentOffset, contentSize, layoutMeasurement } =
+            e.nativeEvent;
+          const total = Math.max(
+            1,
+            contentSize.height - layoutMeasurement.height
+          );
+          const p = Math.min(1, Math.max(0, contentOffset.y / total));
+          setProgress(p);
+        },
+        contentContainerStyle: {
+          paddingHorizontal: 20,
+          paddingTop: 14,
+        },
+      }}
+    >
+      {/* Hero */}
           <View
             style={{
               padding: 22,
@@ -380,9 +381,7 @@ const ChapterScreen = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </ScrollView>
-      </SafeAreaView>
-    </Background>
+    </CollapsibleScreen>
   );
 };
 

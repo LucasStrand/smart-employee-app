@@ -1,14 +1,13 @@
 import React from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import { useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/lib/ThemeContext";
 import { chapters, getChapter } from "@/lib/manual";
 import { useBookmarks } from "@/lib/useBookmarks";
 
-import { Background } from "@/components/playbook/Background";
+import { CollapsibleScreen } from "@/components/playbook/CollapsibleScreen";
 import { ChapterRow } from "@/components/playbook/ChapterRow";
 import { ScreenHeader } from "@/components/playbook/ScreenHeader";
 
@@ -22,22 +21,21 @@ const Favorites = () => {
     .filter(Boolean) as ReturnType<typeof getChapter>[];
 
   return (
-    <Background>
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+    <CollapsibleScreen
+      header={
         <ScreenHeader
           eyebrow="Sparat"
           title="Favoriter"
           subtitle={`${items.length} ${items.length === 1 ? "kapitel" : "kapitel"} sparade`}
         />
-
-        <ScrollView
-          contentContainerStyle={{
-            paddingHorizontal: 20,
-            paddingTop: 12,
-            paddingBottom: 140,
-          }}
-          showsVerticalScrollIndicator={false}
-        >
+      }
+      scrollProps={{
+        contentContainerStyle: {
+          paddingHorizontal: 20,
+          paddingTop: 12,
+        },
+      }}
+    >
           {items.length === 0 ? (
             <View
               style={{
@@ -158,9 +156,7 @@ const Favorites = () => {
               )}
             </View>
           )}
-        </ScrollView>
-      </SafeAreaView>
-    </Background>
+    </CollapsibleScreen>
   );
 };
 

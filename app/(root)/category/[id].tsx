@@ -1,14 +1,13 @@
 import React from "react";
-import { ScrollView, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/lib/ThemeContext";
 import { getCategory, getChaptersByCategory } from "@/lib/manual";
 import { useBookmarks } from "@/lib/useBookmarks";
 
-import { Background } from "@/components/playbook/Background";
+import { CollapsibleScreen } from "@/components/playbook/CollapsibleScreen";
 import { ChapterRow } from "@/components/playbook/ChapterRow";
 import { ScreenHeader } from "@/components/playbook/ScreenHeader";
 
@@ -22,11 +21,12 @@ const CategoryDetail = () => {
 
   if (!category) {
     return (
-      <Background>
-        <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-          <ScreenHeader title="Kategori saknas" onBack={router.back} />
-        </SafeAreaView>
-      </Background>
+      <CollapsibleScreen
+        variant="stack"
+        header={<ScreenHeader title="Kategori saknas" onBack={router.back} />}
+      >
+        <View />
+      </CollapsibleScreen>
     );
   }
 
@@ -41,8 +41,9 @@ const CategoryDetail = () => {
   );
 
   return (
-    <Background>
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+    <CollapsibleScreen
+      variant="stack"
+      header={
         <ScreenHeader
           onBack={() => router.back()}
           eyebrow={`Kategori · ${chapters.length} kapitel`}
@@ -51,15 +52,14 @@ const CategoryDetail = () => {
           trailingIcon="bookmark-outline"
           onTrailingPress={() => router.push("/(root)/(tabs)/favorites")}
         />
-
-        <ScrollView
-          contentContainerStyle={{
-            paddingHorizontal: 20,
-            paddingTop: 4,
-            paddingBottom: 140,
-          }}
-          showsVerticalScrollIndicator={false}
-        >
+      }
+      scrollProps={{
+        contentContainerStyle: {
+          paddingHorizontal: 20,
+          paddingTop: 4,
+        },
+      }}
+    >
           {/* Hero card */}
           <View
             style={{
@@ -202,9 +202,7 @@ const CategoryDetail = () => {
               />
             ))}
           </View>
-        </ScrollView>
-      </SafeAreaView>
-    </Background>
+    </CollapsibleScreen>
   );
 };
 
