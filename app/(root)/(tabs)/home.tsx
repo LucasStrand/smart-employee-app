@@ -22,6 +22,7 @@ import {
 import { useBookmarks } from "@/lib/useBookmarks";
 
 import { Background } from "@/components/playbook/Background";
+import { GlassIconButton } from "@/components/glass/GlassIconButton";
 import { CategoryCard } from "@/components/playbook/CategoryCard";
 import { ChapterRow } from "@/components/playbook/ChapterRow";
 import { CollapsibleScreen } from "@/components/playbook/CollapsibleScreen";
@@ -108,39 +109,12 @@ const Home = () => {
             paddingBottom: 10,
           }}
         >
-          <TouchableOpacity
-            activeOpacity={0.85}
+          <GlassIconButton
+            accessibilityLabel="Notiser"
+            badged
+            icon="notifications-outline"
             onPress={() => router.push("/(root)/(tabs)/profile")}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 14,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}
-          >
-            <Ionicons
-              name="notifications-outline"
-              size={18}
-              color={colors.text}
-            />
-            <View
-              style={{
-                position: "absolute",
-                top: 9,
-                right: 9,
-                width: 8,
-                height: 8,
-                borderRadius: 999,
-                backgroundColor: colors.brand,
-                borderWidth: 1.5,
-                borderColor: colors.surface,
-              }}
-            />
-          </TouchableOpacity>
+          />
         </View>
       }
     >

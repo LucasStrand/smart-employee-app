@@ -18,6 +18,7 @@ import {
 } from "@/lib/manual";
 import { useBookmarks } from "@/lib/useBookmarks";
 
+import { GlassIconButton } from "@/components/glass/GlassIconButton";
 import { Background } from "@/components/playbook/Background";
 import { CollapsibleScreen } from "@/components/playbook/CollapsibleScreen";
 import { ContentBlock } from "@/components/playbook/ContentBlock";
@@ -48,9 +49,11 @@ const ChapterScreen = () => {
     return (
       <Background>
         <View style={{ flex: 1, padding: 20, paddingTop: getScreenTopPadding(insets, 20) }}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={20} color={colors.text} />
-          </TouchableOpacity>
+          <GlassIconButton
+            accessibilityLabel="Tillbaka"
+            icon="chevron-back"
+            onPress={() => router.back()}
+          />
           <Text
             style={{
               color: colors.text,
@@ -84,61 +87,30 @@ const ChapterScreen = () => {
               paddingBottom: 8,
             }}
           >
-            <TouchableOpacity
+            <GlassIconButton
+              accessibilityLabel="Tillbaka"
+              icon="chevron-back"
               onPress={() => router.back()}
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 12,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: colors.surface,
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
-            >
-              <Ionicons name="chevron-back" size={18} color={colors.text} />
-            </TouchableOpacity>
+            />
 
             <View style={{ flexDirection: "row", gap: 10 }}>
-              <TouchableOpacity
+              <GlassIconButton
+                accessibilityLabel={
+                  isB ? "Ta bort favorit" : "Spara som favorit"
+                }
+                active={isB}
+                icon={isB ? "bookmark" : "bookmark-outline"}
                 onPress={() => toggleBookmark(chapter.id)}
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 12,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: isB ? colors.brandGlow : colors.surface,
-                  borderWidth: 1,
-                  borderColor: isB ? colors.borderBrand : colors.border,
-                }}
-              >
-                <Ionicons
-                  name={isB ? "bookmark" : "bookmark-outline"}
-                  size={18}
-                  color={isB ? colors.brand : colors.text}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
+              />
+              <GlassIconButton
+                accessibilityLabel="Dela kapitel"
+                icon="share-outline"
                 onPress={() =>
                   Share.share({
                     message: `${chapter.title} – Smart Teknik Standard`,
                   })
                 }
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 12,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: colors.surface,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
-              >
-                <Ionicons name="share-outline" size={18} color={colors.text} />
-              </TouchableOpacity>
+              />
             </View>
           </View>
 

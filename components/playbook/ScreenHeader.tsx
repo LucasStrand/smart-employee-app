@@ -1,10 +1,11 @@
 import React from "react";
-import { Text, View, TouchableOpacity, ViewStyle } from "react-native";
+import { Text, View, ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
-import { useTheme } from "@/lib/ThemeContext";
+import { GlassIconButton } from "@/components/glass/GlassIconButton";
 import { getScreenTopPadding } from "@/lib/screenInsets";
+import { useTheme } from "@/lib/ThemeContext";
 
 interface Props {
   title: string;
@@ -45,63 +46,26 @@ export const ScreenHeader: React.FC<Props> = ({
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          minHeight: 32,
+          minHeight: 44,
         }}
       >
         {onBack ? (
-          <TouchableOpacity
+          <GlassIconButton
+            accessibilityLabel="Tillbaka"
+            icon="chevron-back"
             onPress={onBack}
-            hitSlop={10}
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 12,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}
-          >
-            <Ionicons name="chevron-back" size={18} color={colors.text} />
-          </TouchableOpacity>
+          />
         ) : (
-          <View />
+          <View style={{ width: 44 }} />
         )}
 
-        {trailingIcon && (
-          <TouchableOpacity
+        {trailingIcon ? (
+          <GlassIconButton
+            badged={trailingBadged}
+            icon={trailingIcon}
             onPress={onTrailingPress}
-            hitSlop={10}
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 12,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}
-          >
-            <Ionicons name={trailingIcon} size={18} color={colors.text} />
-            {trailingBadged && (
-              <View
-                style={{
-                  position: "absolute",
-                  top: 8,
-                  right: 8,
-                  width: 8,
-                  height: 8,
-                  borderRadius: 999,
-                  backgroundColor: colors.brand,
-                  borderWidth: 1.5,
-                  borderColor: colors.surface,
-                }}
-              />
-            )}
-          </TouchableOpacity>
-        )}
+          />
+        ) : null}
       </View>
 
       {eyebrow && (
