@@ -1,12 +1,14 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Animated,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Share,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/lib/ThemeContext";
@@ -17,17 +19,16 @@ import {
   Section,
 } from "@/lib/manual";
 import { useBookmarks } from "@/lib/useBookmarks";
+import { LIST_ROW_GAP } from "@/lib/responsiveGrid";
 
 import { GlassIconButton } from "@/components/glass/GlassIconButton";
-import { Background } from "@/components/playbook/Background";
 import { CollapsibleScreen } from "@/components/playbook/CollapsibleScreen";
 import { ContentBlock } from "@/components/playbook/ContentBlock";
-import { getScreenTopPadding } from "@/lib/screenInsets";
+import { ScreenHeader } from "@/components/playbook/ScreenHeader";
 
 const ChapterScreen = () => {
   const router = useRouter();
   const { colors, mode } = useTheme();
-  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const chapter = getChapter(String(id));
   const category = chapter ? getCategory(chapter.categoryId) : undefined;
@@ -38,34 +39,69 @@ const ChapterScreen = () => {
 
   const { isBookmarked, toggleBookmark, trackRead } = useBookmarks();
 
-  const [progress, setProgress] = useState(0);
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const trackWidthAnim = useRef(new Animated.Value(0)).current;
   const [marked, setMarked] = useState(false);
 
+  const progressWidth = useMemo(
+    () => Animated.multiply(progressAnim, trackWidthAnim),
+    [progressAnim, trackWidthAnim]
+  );
+
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { contentOffset, contentSize, layoutMeasurement } =
+        event.nativeEvent;
+      const total = Math.max(
+        1,
+        contentSize.height - layoutMeasurement.height
+      );
+      const p = Math.min(1, Math.max(0, contentOffset.y / total));
+      progressAnim.setValue(p);
+    },
+    [progressAnim]
+  );
+
+  const scrollProps = useMemo(
+    () => ({
+      scrollEventThrottle: 32 as const,
+      onScroll: handleScroll,
+      contentContainerStyle: {
+        paddingHorizontal: 20,
+        paddingTop: 8,
+      },
+    }),
+    [handleScroll]
+  );
+
+  const chapterId = chapter?.id;
+
   useEffect(() => {
-    if (chapter) trackRead(chapter.id);
-  }, [chapter, trackRead]);
+    if (chapterId) trackRead(chapterId);
+  }, [chapterId, trackRead]);
 
   if (!chapter) {
     return (
-      <Background>
-        <View style={{ flex: 1, padding: 20, paddingTop: getScreenTopPadding(insets, 20) }}>
-          <GlassIconButton
-            accessibilityLabel="Tillbaka"
-            icon="chevron-back"
-            onPress={() => router.back()}
-          />
-          <Text
-            style={{
-              color: colors.text,
-              fontFamily: "Jakarta-Bold",
-              fontSize: 22,
-              marginTop: 20,
-            }}
-          >
-            Kapitel saknas
-          </Text>
-        </View>
-      </Background>
+      <CollapsibleScreen
+        variant="stack"
+        header={
+          <ScreenHeader title="Kapitel saknas" onBack={() => router.back()} />
+        }
+        scrollProps={{
+          contentContainerStyle: { paddingHorizontal: 20, paddingTop: 8 },
+        }}
+      >
+        <Text
+          style={{
+            color: colors.textMuted,
+            fontFamily: "Jakarta",
+            fontSize: 14,
+            lineHeight: 21,
+          }}
+        >
+          Det begärda kapitlet kunde inte hittas.
+        </Text>
+      </CollapsibleScreen>
     );
   }
 
@@ -77,44 +113,35 @@ const ChapterScreen = () => {
       bottomSpacing={32}
       header={
         <>
+          <ScreenHeader
+            title={chapter.shortTitle}
+            onBack={() => router.back()}
+            trailing={
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <GlassIconButton
+                  accessibilityLabel={
+                    isB ? "Ta bort favorit" : "Spara som favorit"
+                  }
+                  active={isB}
+                  icon={isB ? "bookmark" : "bookmark-outline"}
+                  onPress={() => toggleBookmark(chapter.id)}
+                />
+                <GlassIconButton
+                  accessibilityLabel="Dela kapitel"
+                  icon="share-outline"
+                  onPress={() =>
+                    Share.share({
+                      message: `${chapter.title} – Smart Teknik Standard`,
+                    })
+                  }
+                />
+              </View>
+            }
+          />
           <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              paddingHorizontal: 20,
-              paddingTop: getScreenTopPadding(insets, 4),
-              paddingBottom: 8,
-            }}
-          >
-            <GlassIconButton
-              accessibilityLabel="Tillbaka"
-              icon="chevron-back"
-              onPress={() => router.back()}
-            />
-
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              <GlassIconButton
-                accessibilityLabel={
-                  isB ? "Ta bort favorit" : "Spara som favorit"
-                }
-                active={isB}
-                icon={isB ? "bookmark" : "bookmark-outline"}
-                onPress={() => toggleBookmark(chapter.id)}
-              />
-              <GlassIconButton
-                accessibilityLabel="Dela kapitel"
-                icon="share-outline"
-                onPress={() =>
-                  Share.share({
-                    message: `${chapter.title} – Smart Teknik Standard`,
-                  })
-                }
-              />
-            </View>
-          </View>
-
-          <View
+            onLayout={(event) =>
+              trackWidthAnim.setValue(event.nativeEvent.layout.width)
+            }
             style={{
               marginHorizontal: 20,
               height: 3,
@@ -124,9 +151,9 @@ const ChapterScreen = () => {
               marginBottom: 6,
             }}
           >
-            <View
+            <Animated.View
               style={{
-                width: `${progress * 100}%`,
+                width: progressWidth,
                 height: 3,
                 backgroundColor: tint,
                 borderRadius: 999,
@@ -135,23 +162,7 @@ const ChapterScreen = () => {
           </View>
         </>
       }
-      scrollProps={{
-        scrollEventThrottle: 32,
-        onScroll: (e) => {
-          const { contentOffset, contentSize, layoutMeasurement } =
-            e.nativeEvent;
-          const total = Math.max(
-            1,
-            contentSize.height - layoutMeasurement.height
-          );
-          const p = Math.min(1, Math.max(0, contentOffset.y / total));
-          setProgress(p);
-        },
-        contentContainerStyle: {
-          paddingHorizontal: 20,
-          paddingTop: 14,
-        },
-      }}
+      scrollProps={scrollProps}
     >
       {/* Hero */}
           <View
@@ -446,7 +457,7 @@ const SectionView: React.FC<{
         </Text>
       </View>
 
-      <View style={{ gap: 14 }}>
+      <View style={{ gap: LIST_ROW_GAP }}>
         {items.map((entry, idx) => {
           if (entry.kind === "single") {
             return (

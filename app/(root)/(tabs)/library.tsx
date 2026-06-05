@@ -8,7 +8,6 @@ import {
   categories,
   chapters,
   getChaptersByCategory,
-  manualMeta,
 } from "@/lib/manual";
 import { useBookmarks } from "@/lib/useBookmarks";
 
@@ -35,16 +34,29 @@ const Library = () => {
 
   return (
     <CollapsibleScreen
-      header={
-        <>
-          <ScreenHeader
-            eyebrow={`Manual · ${manualMeta.version}`}
-            title="Bibliotek"
-            subtitle={`${chapters.length} kapitel uppdelade i ${categories.length} kategorier`}
-          />
+      header={<ScreenHeader title="Bibliotek" />}
+      scrollProps={{
+        contentContainerStyle: {
+          paddingHorizontal: 20,
+          paddingTop: 8,
+        },
+      }}
+    >
+          <Text
+            style={{
+              color: colors.textMuted,
+              fontFamily: "Jakarta",
+              fontSize: 14,
+              lineHeight: 21,
+              marginBottom: 14,
+            }}
+          >
+            {chapters.length} kapitel uppdelade i {categories.length} kategorier
+          </Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
+            style={{ marginHorizontal: -20, marginBottom: 18 }}
             contentContainerStyle={{
               paddingHorizontal: 20,
               paddingVertical: 4,
@@ -92,15 +104,6 @@ const Library = () => {
               );
             })}
           </ScrollView>
-        </>
-      }
-      scrollProps={{
-        contentContainerStyle: {
-          paddingHorizontal: 20,
-          paddingTop: 18,
-        },
-      }}
-    >
           {/* Selected category card */}
           {active && (
             <TouchableOpacity

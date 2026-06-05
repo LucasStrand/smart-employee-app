@@ -78,29 +78,32 @@ const BrowseWorkOrders = () => {
     <CollapsibleScreen
       variant="stack"
       header={
-        <>
-          <ScreenHeader
-            onBack={() => router.back()}
-            eyebrow="Verktyg"
-            title="Arbetsordrar"
-            subtitle="Tilldela tillgängliga checklistor till dig själv."
-          />
-          <View style={{ paddingHorizontal: 20, paddingBottom: 8 }}>
-            <SearchBar
-              value={searchQuery}
-              onChangeText={handleSearch}
-              placeholder="Sök arbetsordrar…"
-            />
-          </View>
-        </>
+        <ScreenHeader title="Arbetsordrar" onBack={() => router.back()} />
       }
       scrollProps={{
         contentContainerStyle: {
           paddingHorizontal: 20,
-          paddingTop: 18,
+          paddingTop: 8,
         },
       }}
     >
+      <SearchBar
+        value={searchQuery}
+        onChangeText={handleSearch}
+        placeholder="Sök arbetsordrar…"
+      />
+      <Text
+        style={{
+          color: colors.textMuted,
+          fontFamily: "Jakarta",
+          fontSize: 14,
+          lineHeight: 21,
+          marginTop: 10,
+          marginBottom: 18,
+        }}
+      >
+        Tilldela tillgängliga checklistor till dig själv.
+      </Text>
       {loading ? (
         <View
           style={{

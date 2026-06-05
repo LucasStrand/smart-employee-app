@@ -45,10 +45,8 @@ const CategoryDetail = () => {
       variant="stack"
       header={
         <ScreenHeader
-          onBack={() => router.back()}
-          eyebrow={`Kategori · ${chapters.length} kapitel`}
           title={category.name}
-          subtitle={category.description}
+          onBack={() => router.back()}
           trailingIcon="bookmark-outline"
           onTrailingPress={() => router.push("/(root)/(tabs)/favorites")}
         />
@@ -56,7 +54,7 @@ const CategoryDetail = () => {
       scrollProps={{
         contentContainerStyle: {
           paddingHorizontal: 20,
-          paddingTop: 4,
+          paddingTop: 8,
         },
       }}
     >

@@ -3,11 +3,11 @@ import {
   ActivityIndicator,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/lib/ThemeContext";
@@ -22,19 +22,30 @@ import {
 import { useBookmarks } from "@/lib/useBookmarks";
 
 import { Background } from "@/components/playbook/Background";
-import { GlassIconButton } from "@/components/glass/GlassIconButton";
 import { CategoryCard } from "@/components/playbook/CategoryCard";
 import { ChapterRow } from "@/components/playbook/ChapterRow";
 import { CollapsibleScreen } from "@/components/playbook/CollapsibleScreen";
 import { Pill } from "@/components/playbook/Pill";
 import { SearchBar } from "@/components/playbook/SearchBar";
+import { ScreenHeader } from "@/components/playbook/ScreenHeader";
 import { SectionHeader } from "@/components/playbook/SectionHeader";
-import { getScreenTopPadding } from "@/lib/screenInsets";
+import { GlassIconButton } from "@/components/glass/GlassIconButton";
+import {
+  getGridItemWidth,
+  GRID_GAP,
+  LIST_ROW_GAP,
+  useResponsiveColumnCount,
+} from "@/lib/responsiveGrid";
 
 const Home = () => {
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
+  const categoryColumns = useResponsiveColumnCount(3);
+  const categoryItemWidth = getGridItemWidth(screenWidth, categoryColumns, {
+    gap: GRID_GAP,
+    horizontalPadding: 20,
+  });
   const { colors, mode } = useTheme();
-  const insets = useSafeAreaInsets();
   const { recent, isBookmarked, toggleBookmark } = useBookmarks();
 
   const [userName, setUserName] = useState<string | null>(null);
@@ -98,26 +109,25 @@ const Home = () => {
   return (
     <CollapsibleScreen
       header={
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            paddingHorizontal: 20,
-            paddingTop: getScreenTopPadding(insets, 10),
-            paddingBottom: 10,
-          }}
-        >
-          <GlassIconButton
-            accessibilityLabel="Notiser"
-            badged
-            icon="notifications-outline"
-            onPress={() => router.push("/(root)/(tabs)/profile")}
-          />
-        </View>
+        <ScreenHeader
+          title="Hem"
+          trailing={
+            <GlassIconButton
+              accessibilityLabel="Notiser"
+              badged
+              icon="notifications-outline"
+              onPress={() => router.push("/(root)/(tabs)/profile")}
+            />
+          }
+        />
       }
+      scrollProps={{
+        contentContainerStyle: {
+          paddingTop: 8,
+        },
+      }}
     >
-      <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
+      <View style={{ paddingHorizontal: 20 }}>
         <Text
           style={{
             color: colors.brand,
@@ -182,11 +192,11 @@ const Home = () => {
               actionLabel="Visa alla"
               onActionPress={() => router.push("/(root)/(tabs)/library")}
             />
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GRID_GAP }}>
               {categories.map((cat) => (
                 <View
                   key={cat.id}
-                  style={{ width: "48.5%", marginBottom: 0 }}
+                  style={{ width: categoryItemWidth }}
                 >
                   <CategoryCard
                     category={cat}
@@ -204,7 +214,7 @@ const Home = () => {
           </View>
 
           {/* Recently updated / recently read */}
-          <View style={{ paddingHorizontal: 20, marginTop: 30 }}>
+          <View style={{ paddingHorizontal: 20, marginTop: LIST_ROW_GAP }}>
             <SectionHeader
               title={recent.length ? "Senast läst" : "Senast uppdaterat"}
               actionLabel="Visa alla"

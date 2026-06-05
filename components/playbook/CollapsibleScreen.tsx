@@ -1,21 +1,37 @@
-import React, { useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   Animated,
   NativeScrollEvent,
   NativeSyntheticEvent,
   ScrollViewProps,
+  StyleProp,
   StyleSheet,
   View,
+  ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Background } from "@/components/playbook/Background";
 import { TopScrim } from "@/components/playbook/TopScrim";
+import { HeaderScrollProvider } from "@/lib/HeaderScrollContext";
 import { useTheme } from "@/lib/ThemeContext";
 import {
+  getScreenTopPadding,
   getStackScrollBottomPadding,
   getTabScrollBottomPadding,
 } from "@/lib/screenInsets";
+
+/** Baseline compact header height before onLayout (avoids first-frame overlap). */
+function estimateTabHeaderHeight(insets: { top: number }): number {
+  return getScreenTopPadding(insets, 8) + 54;
+}
+
+function resolveContentTopSpacing(
+  contentContainerStyle: StyleProp<ViewStyle> | undefined
+): number {
+  const flat = StyleSheet.flatten(contentContainerStyle);
+  return typeof flat?.paddingTop === "number" ? flat.paddingTop : 0;
+}
 
 interface CollapsibleScreenProps {
   /** Pinned top chrome that stays visible while content scrolls underneath. */
@@ -41,9 +57,11 @@ export const CollapsibleScreen: React.FC<CollapsibleScreenProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const { mode } = useTheme();
-  const scrollY = React.useRef(new Animated.Value(0)).current;
-  const [headerHeight, setHeaderHeight] = useState(0);
+  const scrollY = useRef(new Animated.Value(0)).current;
   const hasHeader = header != null;
+  const [headerHeight, setHeaderHeight] = useState(() =>
+    hasHeader ? estimateTabHeaderHeight(insets) : 0
+  );
 
   const paddingBottom =
     variant === "tab"
@@ -67,10 +85,29 @@ export const CollapsibleScreen: React.FC<CollapsibleScreenProps> = ({
     ...restScrollProps
   } = scrollProps ?? {};
 
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    scrollY.setValue(event.nativeEvent.contentOffset.y);
-    externalOnScroll?.(event);
-  };
+  const externalOnScrollRef = useRef(externalOnScroll);
+  externalOnScrollRef.current = externalOnScroll;
+
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      scrollY.setValue(event.nativeEvent.contentOffset.y);
+      externalOnScrollRef.current?.(event);
+    },
+    [scrollY]
+  );
+
+  const handleHeaderLayout = useCallback(
+    (event: { nativeEvent: { layout: { height: number } } }) => {
+      const height = event.nativeEvent.layout.height;
+      setHeaderHeight((prev) => (prev === height ? prev : height));
+    },
+    []
+  );
+
+  const contentTopSpacing = resolveContentTopSpacing(contentContainerStyle);
+  const scrollPaddingTop = hasHeader
+    ? headerHeight + contentTopSpacing
+    : contentTopSpacing || undefined;
 
   return (
     <Background glow={glow}>
@@ -85,9 +122,9 @@ export const CollapsibleScreen: React.FC<CollapsibleScreenProps> = ({
           showsVerticalScrollIndicator={showsVerticalScrollIndicator}
           style={[styles.scroll, style]}
           contentContainerStyle={[
-            hasHeader ? { paddingTop: headerHeight } : null,
             contentContainerStyle,
             { paddingBottom },
+            scrollPaddingTop != null ? { paddingTop: scrollPaddingTop } : null,
           ]}
           onScroll={handleScroll}
         >
@@ -96,12 +133,10 @@ export const CollapsibleScreen: React.FC<CollapsibleScreenProps> = ({
 
         {hasHeader ? (
           <View
-            onLayout={(event) =>
-              setHeaderHeight(event.nativeEvent.layout.height)
-            }
+            onLayout={handleHeaderLayout}
             style={styles.stickyHeader}
           >
-            {header}
+            <HeaderScrollProvider value={scrollY}>{header}</HeaderScrollProvider>
           </View>
         ) : null}
 

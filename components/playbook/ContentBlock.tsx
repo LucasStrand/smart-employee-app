@@ -1,8 +1,13 @@
 import React from "react";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/lib/ThemeContext";
+import {
+  getGridItemWidth,
+  GRID_GAP,
+  useResponsiveColumnCount,
+} from "@/lib/responsiveGrid";
 import type {
   Block,
   Check as CheckBlock,
@@ -483,24 +488,23 @@ const Check: React.FC<{ block: CheckBlock; isLast?: boolean }> = ({
   );
 };
 
-const ColumnsView: React.FC<{ block: ColumnsBlock; accent?: string }> = ({
-  block,
-  accent,
-}) => {
+const ColumnCard: React.FC<{
+  col: ColumnsBlock["columns"][number];
+  accent?: string;
+  width: number;
+}> = ({ col, accent, width }) => {
   const { colors } = useTheme();
   return (
-    <View style={{ gap: 12 }}>
-      {block.columns.map((col, i) => (
-        <View
-          key={i}
-          style={{
-            backgroundColor: colors.surfaceRaised,
-            borderRadius: 14,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-        >
+    <View
+      style={{
+        width,
+        backgroundColor: colors.surfaceRaised,
+        borderRadius: 14,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: colors.border,
+      }}
+    >
           {col.title && (
             <Text
               style={{
@@ -562,7 +566,26 @@ const ColumnsView: React.FC<{ block: ColumnsBlock; accent?: string }> = ({
               ))}
             </View>
           )}
-        </View>
+    </View>
+  );
+};
+
+const ColumnsView: React.FC<{ block: ColumnsBlock; accent?: string }> = ({
+  block,
+  accent,
+}) => {
+  const { width: screenWidth } = useWindowDimensions();
+  const responsiveColumns = useResponsiveColumnCount(block.count);
+  const columnCount = Math.min(block.columns.length, responsiveColumns);
+  const itemWidth = getGridItemWidth(screenWidth, columnCount, {
+    gap: GRID_GAP,
+    horizontalPadding: 20,
+  });
+
+  return (
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GRID_GAP }}>
+      {block.columns.map((col, i) => (
+        <ColumnCard key={i} col={col} accent={accent} width={itemWidth} />
       ))}
     </View>
   );

@@ -93,36 +93,42 @@ export const BookmarksProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const toggleBookmark = useCallback(
     async (id: string) => {
-      const next = bookmarks.includes(id)
-        ? bookmarks.filter((b) => b !== id)
-        : [id, ...bookmarks];
-      setBookmarks(next);
-      await persist(STORAGE_KEY, next);
+      setBookmarks((prev) => {
+        const next = prev.includes(id)
+          ? prev.filter((b) => b !== id)
+          : [id, ...prev];
+        void persist(STORAGE_KEY, next);
+        return next;
+      });
     },
-    [bookmarks, persist]
+    [persist]
   );
 
   const trackRead = useCallback(
     async (id: string) => {
-      const next = [id, ...recent.filter((c) => c !== id)].slice(0, MAX_RECENT);
-      setRecent(next);
-      await persist(RECENT_KEY, next);
+      setRecent((prev) => {
+        const next = [id, ...prev.filter((c) => c !== id)].slice(0, MAX_RECENT);
+        void persist(RECENT_KEY, next);
+        return next;
+      });
     },
-    [recent, persist]
+    [persist]
   );
 
   const addRecentSearch = useCallback(
     async (query: string) => {
       const q = query.trim();
       if (q.length < 2) return;
-      const next = [
-        q,
-        ...recentSearches.filter((s) => s.toLowerCase() !== q.toLowerCase()),
-      ].slice(0, MAX_RECENT_SEARCHES);
-      setRecentSearches(next);
-      await persist(RECENT_SEARCHES_KEY, next);
+      setRecentSearches((prev) => {
+        const next = [
+          q,
+          ...prev.filter((s) => s.toLowerCase() !== q.toLowerCase()),
+        ].slice(0, MAX_RECENT_SEARCHES);
+        void persist(RECENT_SEARCHES_KEY, next);
+        return next;
+      });
     },
-    [recentSearches, persist]
+    [persist]
   );
 
   const clearRecentSearches = useCallback(async () => {

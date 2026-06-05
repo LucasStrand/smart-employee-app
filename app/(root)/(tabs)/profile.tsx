@@ -60,17 +60,11 @@ const Profile = () => {
 
   return (
     <CollapsibleScreen
-      header={
-        <ScreenHeader
-          eyebrow="Konto"
-          title="Inställningar"
-          subtitle="Personalisera utseende, aviseringar och tillgänglighet."
-        />
-      }
+      header={<ScreenHeader title="Profil" />}
       scrollProps={{
         contentContainerStyle: {
           paddingHorizontal: 20,
-          paddingTop: 6,
+          paddingTop: 8,
         },
       }}
     >

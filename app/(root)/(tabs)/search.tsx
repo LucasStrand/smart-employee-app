@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -12,6 +12,12 @@ import { CollapsibleScreen } from "@/components/playbook/CollapsibleScreen";
 import { ChapterRow } from "@/components/playbook/ChapterRow";
 import { ScreenHeader } from "@/components/playbook/ScreenHeader";
 import { SearchBar } from "@/components/playbook/SearchBar";
+import {
+  getGridItemWidth,
+  GRID_GAP,
+  LIST_ROW_GAP,
+  useResponsiveColumnCount,
+} from "@/lib/responsiveGrid";
 
 // Flatten all chapter content into searchable strings.
 const buildSearchIndex = () =>
@@ -78,6 +84,12 @@ const popularQueries = [
 
 const Search = () => {
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
+  const topicColumns = useResponsiveColumnCount(3);
+  const topicItemWidth = getGridItemWidth(screenWidth, topicColumns, {
+    gap: GRID_GAP,
+    horizontalPadding: 20,
+  });
   const { colors } = useTheme();
   const params = useLocalSearchParams<{ q?: string }>();
   const { recentSearches, addRecentSearch, clearRecentSearches, isBookmarked, toggleBookmark } =
@@ -101,41 +113,93 @@ const Search = () => {
 
   return (
     <CollapsibleScreen
-      header={
-        <>
-          <ScreenHeader
-            eyebrow="Sök"
-            title="Hitta i manualen"
-            subtitle="Sök på begrepp, system, fas eller rolltyp."
-          />
-          <View style={{ paddingHorizontal: 20, paddingBottom: 8 }}>
-            <SearchBar
-              value={query}
-              onChangeText={setQuery}
-              autoFocus={!query}
-              placeholder="Sök på t.ex. PoE, BTU, rack…"
-            />
-          </View>
-        </>
-      }
+      header={<ScreenHeader title="Sök" />}
       scrollProps={{
         keyboardShouldPersistTaps: "handled",
         contentContainerStyle: {
           paddingHorizontal: 20,
-          paddingTop: 22,
+          paddingTop: 8,
         },
       }}
     >
+          <SearchBar
+            value={query}
+            onChangeText={setQuery}
+            autoFocus={!query}
+            placeholder="Sök på t.ex. PoE, BTU, rack…"
+          />
+          <Text
+            style={{
+              color: colors.textMuted,
+              fontFamily: "Jakarta",
+              fontSize: 14,
+              lineHeight: 21,
+              marginTop: 10,
+              marginBottom: 18,
+            }}
+          >
+            Sök på begrepp, system, fas eller rolltyp.
+          </Text>
           {query.trim().length === 0 ? (
             <>
+              <View>
+                <Text
+                  style={{
+                    color: colors.text,
+                    fontFamily: "Jakarta-Bold",
+                    fontSize: 16,
+                    marginBottom: 12,
+                  }}
+                >
+                  Populära ämnen
+                </Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GRID_GAP }}>
+                  {popularQueries.map((q) => (
+                    <TouchableOpacity
+                      key={q}
+                      onPress={() => setQuery(q)}
+                      style={{
+                        width: topicItemWidth,
+                        paddingHorizontal: 14,
+                        paddingVertical: 10,
+                        borderRadius: 999,
+                        backgroundColor: colors.surface,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <Ionicons
+                        name="trending-up-outline"
+                        size={14}
+                        color={colors.brand}
+                      />
+                      <Text
+                        style={{
+                          flex: 1,
+                          color: colors.text,
+                          fontFamily: "Jakarta-SemiBold",
+                          fontSize: 13,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {q}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
               {recentSearches.length > 0 && (
-                <View style={{ marginBottom: 26 }}>
+                <View style={{ marginTop: LIST_ROW_GAP }}>
                   <View
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
                       justifyContent: "space-between",
-                      marginBottom: 12,
+                      marginBottom: LIST_ROW_GAP,
                     }}
                   >
                     <Text
@@ -159,7 +223,7 @@ const Search = () => {
                       </Text>
                     </TouchableOpacity>
                   </View>
-                  <View style={{ gap: 8 }}>
+                  <View style={{ gap: LIST_ROW_GAP }}>
                     {recentSearches.map((q: string) => (
                       <TouchableOpacity
                         key={q}
@@ -201,53 +265,6 @@ const Search = () => {
                   </View>
                 </View>
               )}
-
-              <View>
-                <Text
-                  style={{
-                    color: colors.text,
-                    fontFamily: "Jakarta-Bold",
-                    fontSize: 16,
-                    marginBottom: 12,
-                  }}
-                >
-                  Populära ämnen
-                </Text>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                  {popularQueries.map((q) => (
-                    <TouchableOpacity
-                      key={q}
-                      onPress={() => setQuery(q)}
-                      style={{
-                        paddingHorizontal: 14,
-                        paddingVertical: 10,
-                        borderRadius: 999,
-                        backgroundColor: colors.surface,
-                        borderWidth: 1,
-                        borderColor: colors.border,
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 6,
-                      }}
-                    >
-                      <Ionicons
-                        name="trending-up-outline"
-                        size={14}
-                        color={colors.brand}
-                      />
-                      <Text
-                        style={{
-                          color: colors.text,
-                          fontFamily: "Jakarta-SemiBold",
-                          fontSize: 13,
-                        }}
-                      >
-                        {q}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
             </>
           ) : (
             <View>

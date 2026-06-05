@@ -22,17 +22,11 @@ const Favorites = () => {
 
   return (
     <CollapsibleScreen
-      header={
-        <ScreenHeader
-          eyebrow="Sparat"
-          title="Favoriter"
-          subtitle={`${items.length} ${items.length === 1 ? "kapitel" : "kapitel"} sparade`}
-        />
-      }
+      header={<ScreenHeader title="Favoriter" />}
       scrollProps={{
         contentContainerStyle: {
           paddingHorizontal: 20,
-          paddingTop: 12,
+          paddingTop: 8,
         },
       }}
     >
@@ -40,8 +34,8 @@ const Favorites = () => {
             <View
               style={{
                 alignItems: "center",
-                paddingVertical: 60,
-                paddingHorizontal: 20,
+                paddingTop: 24,
+                paddingBottom: 40,
               }}
             >
               <View
