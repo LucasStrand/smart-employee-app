@@ -14,7 +14,6 @@ const Layout = () => {
       }}
     >
       <Stack.Screen name="welcome" />
-      <Stack.Screen name="sign-up" />
       <Stack.Screen name="sign-in" />
     </Stack>
   );

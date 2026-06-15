@@ -9,7 +9,7 @@ import {
   View,
   ViewStyle,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Background } from "@/components/playbook/Background";
 import { TopScrim } from "@/components/playbook/TopScrim";
@@ -22,7 +22,7 @@ import {
 } from "@/lib/screenInsets";
 
 /** Baseline compact header height before onLayout (avoids first-frame overlap). */
-function estimateTabHeaderHeight(insets: { top: number }): number {
+function estimateTabHeaderHeight(insets: EdgeInsets): number {
   return getScreenTopPadding(insets, 8) + 54;
 }
 

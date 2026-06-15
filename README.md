@@ -1,50 +1,70 @@
-# Welcome to your Expo app 👋
+# Smart Teknik – Employee App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+An [Expo](https://expo.dev) (React Native) app for Smart Teknik field staff. It combines the
+company **manual / playbook** (categories → chapters, bookmarks, full-text search) with
+**work orders and checklists** (todolists, self-checks), behind Microsoft Azure AD sign-in.
+
+Runs on iOS, Android, and web via [Expo Router](https://docs.expo.dev/router/introduction)
+file-based routing.
+
+## Stack
+
+- **Expo Router** — file-based routing (`app/`)
+- **NativeWind / Tailwind** — styling, with a custom theme in `lib/theme.ts` + `lib/ThemeContext.tsx`
+- **expo-auth-session** — Microsoft Azure AD (OAuth 2.0 + PKCE) sign-in
+- **Neon (Postgres)** — data, accessed through Expo Router API routes in `app/(api)/`
+- **Microsoft Graph** — user profile (`/me`)
+
+## Project layout
+
+```
+app/
+  (auth)/        welcome onboarding pager + Microsoft sign-in
+  (root)/(tabs)/ home, library, search, favorites, profile
+  (root)/        category/[id], chapter/[id], browse-workorders
+  (api)/         server routes: todolist, assigned-todolist, archive-todolist, user
+components/      shared UI (playbook/, glass/, Todo/)
+lib/             theme, auth, fetch, api config, manual content, hooks
+```
 
 ## Get started
 
-1. Install dependencies
+1. Install dependencies:
 
    ```bash
    npm install
    ```
 
-2. Start the app
+2. Create a `.env` file (values not committed):
+
+   | Variable | Purpose |
+   | --- | --- |
+   | `DATABASE_URL` | Neon Postgres connection string (used by `app/(api)/` routes) |
+   | `EXPO_PUBLIC_GRAPH_API` | Microsoft Graph base URL (for `/me`) |
+   | `EXPO_PUBLIC_NEXT_API_URL` | Optional secondary API base URL |
+   | `EXPO_PUBLIC_NEXT_TOKEN` | Token for the secondary API |
+   | `EXPO_PUBLIC_SERVER_URL` | Server URL for relative API calls |
+
+   Azure AD `CLIENT_ID` / `TENANT_ID` are currently set in `app/(auth)/sign-in.tsx`.
+
+3. Start the app:
 
    ```bash
-    npx expo start
+   npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+   Then open in a development build, Android emulator, iOS simulator, or Expo Go.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Scripts
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+- `npm start` / `npm run android` / `npm run ios` / `npm run web` — launch Expo
+- `npm test` — Jest (watch mode)
+- `npm run lint` — Expo lint
+- `npx tsc --noEmit` — typecheck
 
-## Get a fresh project
+## Auth flow
 
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Unauthenticated users land on the `(auth)/welcome` onboarding pager, then sign in with their
+Microsoft account in `(auth)/sign-in`. On success the access token is stored
+(`AsyncStorage`), the user is upserted via `app/(api)/user`, and the app redirects to
+`(root)/(tabs)/home`.
