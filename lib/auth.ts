@@ -53,13 +53,13 @@ export function isTokenExpired(token: string): boolean {
   return payload.exp <= now + EXPIRY_SKEW_SECONDS;
 }
 
-/** Returns a non-expired access token, or null after clearing a stale session. */
+/** Returns a non-expired access token, or null after ending a stale session. */
 export async function getValidAccessToken(): Promise<string | null> {
   const token = await getAccessToken();
   if (!token) return null;
 
   if (isTokenExpired(token)) {
-    await clearSession();
+    await handleUnauthorized();
     return null;
   }
 
@@ -73,7 +73,11 @@ export async function handleUnauthorized(): Promise<void> {
 
   try {
     await clearSession();
-    router.replace("/(auth)/welcome");
+    try {
+      router.replace("/(auth)/welcome");
+    } catch {
+      // Navigator may not be mounted yet (e.g. splash). Auth gates still redirect.
+    }
   } finally {
     // Allow a later session to trigger this again after remount/sign-in.
     setTimeout(() => {
