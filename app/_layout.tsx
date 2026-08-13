@@ -4,11 +4,11 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import "../assets/global.css";
+import { getValidAccessToken } from "@/lib/auth";
 import { ThemeProvider, useTheme } from "@/lib/ThemeContext";
 import { BookmarksProvider } from "@/lib/useBookmarks";
 
@@ -65,7 +65,8 @@ export default function RootLayout() {
 
   useEffect(() => {
     const loadSession = async () => {
-      await AsyncStorage.getItem("access_token");
+      // Drops expired tokens before auth gates run.
+      await getValidAccessToken();
       setIsLoading(false);
     };
     loadSession();

@@ -3,14 +3,14 @@ import { ActivityIndicator, View } from "react-native";
 import { Redirect, Stack } from "expo-router";
 
 import { useTheme } from "@/lib/ThemeContext";
-import { getAccessToken } from "@/lib/auth";
+import { getValidAccessToken } from "@/lib/auth";
 
 const Layout = () => {
   const { colors } = useTheme();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    getAccessToken().then((token) => setIsAuthenticated(!!token));
+    getValidAccessToken().then((token) => setIsAuthenticated(!!token));
   }, []);
 
   if (isAuthenticated === null) {

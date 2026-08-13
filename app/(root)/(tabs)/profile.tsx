@@ -6,14 +6,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/lib/ThemeContext";
 import { ApiType } from "@/lib/apiConfig";
 import { fetchAPI } from "@/lib/fetch";
-import { clearSession } from "@/lib/auth";
+import { clearSession, getValidAccessToken } from "@/lib/auth";
 
 import { CollapsibleScreen } from "@/components/playbook/CollapsibleScreen";
 import { ScreenHeader } from "@/components/playbook/ScreenHeader";
@@ -36,7 +35,7 @@ const Profile = () => {
   useEffect(() => {
     (async () => {
       try {
-        const token = await AsyncStorage.getItem("access_token");
+        const token = await getValidAccessToken();
         if (!token) return;
         const data = await fetchAPI("/me", { method: "GET" }, ApiType.GRAPH);
         setUser({
@@ -44,7 +43,7 @@ const Profile = () => {
           email: data?.mail || data?.userPrincipalName || "",
         });
       } catch {
-        // ignore
+        // 401 clears session + redirects via fetchAPI
       }
     })();
   }, []);

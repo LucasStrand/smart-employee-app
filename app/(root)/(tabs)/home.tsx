@@ -6,10 +6,10 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
+import { getValidAccessToken } from "@/lib/auth";
 import { useTheme } from "@/lib/ThemeContext";
 import { ApiType } from "@/lib/apiConfig";
 import { fetchAPI } from "@/lib/fetch";
@@ -55,7 +55,7 @@ const Home = () => {
   useEffect(() => {
     const loadUserFromGraph = async () => {
       try {
-        const token = await AsyncStorage.getItem("access_token");
+        const token = await getValidAccessToken();
         if (!token) {
           setLoading(false);
           return;
@@ -67,7 +67,7 @@ const Home = () => {
         );
         setUserName(userData?.givenName ?? null);
       } catch {
-        // graceful fallback
+        // 401 clears session + redirects via fetchAPI; other errors fall back quietly
       } finally {
         setLoading(false);
       }

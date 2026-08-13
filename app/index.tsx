@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Redirect } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { getValidAccessToken } from "@/lib/auth";
 import { useTheme } from "@/lib/ThemeContext";
 
 const Page = () => {
@@ -11,7 +11,7 @@ const Page = () => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const token = await AsyncStorage.getItem("access_token");
+      const token = await getValidAccessToken();
       setIsAuthenticated(!!token);
     };
     checkAuth();

@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/lib/ThemeContext";
 import { images } from "@/constants";
+import { setAccessToken } from "@/lib/auth";
 import { fetchAPI } from "@/lib/fetch";
 import { Background } from "@/components/playbook/Background";
 
@@ -81,7 +82,7 @@ const SignIn = () => {
       const idToken = tokenData.id_token;
       const decodedToken = JSON.parse(atob(idToken.split(".")[1]));
 
-      await AsyncStorage.setItem("access_token", tokenData.access_token);
+      await setAccessToken(tokenData.access_token);
 
       const upsertRes = await fetchAPI("/(api)/user", {
         method: "POST",

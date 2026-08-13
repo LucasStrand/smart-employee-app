@@ -1,5 +1,5 @@
 // lib/apiConfig.ts
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getValidAccessToken } from "./auth";
 
 export enum ApiType {
   NEON = "neon",
@@ -23,8 +23,6 @@ export const API_CONFIG: Record<ApiType, ApiConfig> = {
   },
   [ApiType.GRAPH]: {
     baseURL: process.env.EXPO_PUBLIC_GRAPH_API ?? "",
-    getToken: async () => {
-      return (await AsyncStorage.getItem("access_token")) || "";
-    },
+    getToken: async () => getValidAccessToken(),
   },
 };

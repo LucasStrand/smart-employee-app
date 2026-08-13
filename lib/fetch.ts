@@ -1,5 +1,6 @@
 // src/api/fetchAPI.ts
 import { API_CONFIG, ApiType } from "./apiConfig";
+import { handleUnauthorized, UnauthorizedError } from "./auth";
 
 export async function fetchAPI(
   endpointOrUrl: string,
@@ -34,13 +35,20 @@ export async function fetchAPI(
       headers,
     });
 
+    if (response.status === 401 && token) {
+      await handleUnauthorized();
+      throw new UnauthorizedError();
+    }
+
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`);
     }
 
     return await response.json();
   } catch (error) {
-    console.error("Fetch error:", error);
+    if (!(error instanceof UnauthorizedError)) {
+      console.error("Fetch error:", error);
+    }
     throw error;
   }
 }
