@@ -1,8 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  Animated,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   Share,
   Text,
   TouchableOpacity,
@@ -38,41 +35,14 @@ const ChapterScreen = () => {
     : colors.brandGlow;
 
   const { isBookmarked, toggleBookmark, trackRead } = useBookmarks();
-
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  const trackWidthAnim = useRef(new Animated.Value(0)).current;
   const [marked, setMarked] = useState(false);
 
-  const progressWidth = useMemo(
-    () => Animated.multiply(progressAnim, trackWidthAnim),
-    [progressAnim, trackWidthAnim]
-  );
-
-  const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const { contentOffset, contentSize, layoutMeasurement } =
-        event.nativeEvent;
-      const total = Math.max(
-        1,
-        contentSize.height - layoutMeasurement.height
-      );
-      const p = Math.min(1, Math.max(0, contentOffset.y / total));
-      progressAnim.setValue(p);
+  const scrollProps = {
+    contentContainerStyle: {
+      paddingHorizontal: 20,
+      paddingTop: 8,
     },
-    [progressAnim]
-  );
-
-  const scrollProps = useMemo(
-    () => ({
-      scrollEventThrottle: 32 as const,
-      onScroll: handleScroll,
-      contentContainerStyle: {
-        paddingHorizontal: 20,
-        paddingTop: 8,
-      },
-    }),
-    [handleScroll]
-  );
+  };
 
   const chapterId = chapter?.id;
 
@@ -112,8 +82,7 @@ const ChapterScreen = () => {
       variant="stack"
       bottomSpacing={32}
       header={
-        <>
-          <ScreenHeader
+        <ScreenHeader
             title={chapter.shortTitle}
             onBack={() => router.back()}
             trailing={
@@ -138,29 +107,6 @@ const ChapterScreen = () => {
               </View>
             }
           />
-          <View
-            onLayout={(event) =>
-              trackWidthAnim.setValue(event.nativeEvent.layout.width)
-            }
-            style={{
-              marginHorizontal: 20,
-              height: 3,
-              borderRadius: 999,
-              backgroundColor: colors.surfaceMuted,
-              overflow: "hidden",
-              marginBottom: 6,
-            }}
-          >
-            <Animated.View
-              style={{
-                width: progressWidth,
-                height: 3,
-                backgroundColor: tint,
-                borderRadius: 999,
-              }}
-            />
-          </View>
-        </>
       }
       scrollProps={scrollProps}
     >

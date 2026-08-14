@@ -1,8 +1,13 @@
-// (api)/archive-todolist+api.ts
 import { neon } from "@neondatabase/serverless";
+
+import { requireLocalUser } from "@/lib/requireAuth";
+
 const sql = neon(process.env.DATABASE_URL || "");
 
 export async function PATCH(request: Request) {
+  const user = await requireLocalUser(request);
+  if (!user.ok) return user.response;
+
   try {
     const { todoListId } = await request.json();
 
@@ -13,7 +18,7 @@ export async function PATCH(request: Request) {
     const result = await sql`
       UPDATE todo_lists
       SET is_history = TRUE
-      WHERE id = ${todoListId}
+      WHERE id = ${todoListId} AND user_id = ${user.userId}
       RETURNING id, is_history;
     `;
 

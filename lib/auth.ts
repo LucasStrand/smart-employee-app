@@ -1,13 +1,22 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 
-const ACCESS_TOKEN_KEY = "access_token";
-const LOCAL_USER_ID_KEY = "local_user_id";
-
-/** Treat tokens as expired this many seconds before `exp`. */
-const EXPIRY_SKEW_SECONDS = 60;
-
-let handlingUnauthorized = false;
+import {
+  AUTH_SCOPE_STRING,
+  AZURE_CLIENT_ID,
+  AZURE_TOKEN_URL,
+} from "./authConfig";
+import { isTokenExpired } from "./jwt";
+import {
+  clearStoredSession,
+  getStoredAccessToken,
+  getStoredIdToken,
+  getStoredLocalUserId,
+  getStoredRefreshToken,
+  setStoredAccessToken,
+  setStoredIdToken,
+  setStoredLocalUserId,
+  setStoredRefreshToken,
+} from "./tokenStorage";
 
 export class UnauthorizedError extends Error {
   readonly status = 401;
@@ -18,52 +27,109 @@ export class UnauthorizedError extends Error {
   }
 }
 
-export const getAccessToken = () => AsyncStorage.getItem(ACCESS_TOKEN_KEY);
+let handlingUnauthorized = false;
+let inFlightRefresh: Promise<string | null> | null = null;
 
-export const setAccessToken = (token: string) =>
-  AsyncStorage.setItem(ACCESS_TOKEN_KEY, token);
+export const getAccessToken = () => getStoredAccessToken();
+export const getLocalUserId = () => getStoredLocalUserId();
 
-export const clearSession = async () => {
-  await AsyncStorage.multiRemove([ACCESS_TOKEN_KEY, LOCAL_USER_ID_KEY]);
-};
+export const setAccessToken = (token: string) => setStoredAccessToken(token);
 
-function parseJwtPayload(token: string): { exp?: number } | null {
+export const setLocalUserId = (id: string) => setStoredLocalUserId(id);
+
+export async function setSessionTokens(params: {
+  accessToken: string;
+  idToken?: string | null;
+  refreshToken?: string | null;
+}): Promise<void> {
+  await setStoredAccessToken(params.accessToken);
+  if (params.idToken) {
+    await setStoredIdToken(params.idToken);
+  }
+  if (params.refreshToken) {
+    await setStoredRefreshToken(params.refreshToken);
+  }
+}
+
+export const clearSession = () => clearStoredSession();
+
+export async function refreshAccessToken(): Promise<string | null> {
+  if (inFlightRefresh) return inFlightRefresh;
+
+  inFlightRefresh = (async () => {
+    const refreshToken = await getStoredRefreshToken();
+    if (!refreshToken || !AZURE_CLIENT_ID) return null;
+
+    try {
+      const body = new URLSearchParams({
+        client_id: AZURE_CLIENT_ID,
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        scope: AUTH_SCOPE_STRING,
+      });
+
+      const response = await fetch(AZURE_TOKEN_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString(),
+      });
+
+      const data = await response.json();
+      if (!response.ok || data.error || !data.access_token) {
+        return null;
+      }
+
+      await setSessionTokens({
+        accessToken: data.access_token,
+        idToken: data.id_token,
+        refreshToken: data.refresh_token ?? refreshToken,
+      });
+      return data.access_token as string;
+    } catch {
+      return null;
+    }
+  })();
+
   try {
-    const part = token.split(".")[1];
-    if (!part) return null;
-
-    const base64 = part.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64.padEnd(
-      base64.length + ((4 - (base64.length % 4)) % 4),
-      "="
-    );
-    return JSON.parse(atob(padded));
-  } catch {
-    return null;
+    return await inFlightRefresh;
+  } finally {
+    inFlightRefresh = null;
   }
 }
 
-export function isTokenExpired(token: string): boolean {
-  const payload = parseJwtPayload(token);
-  if (!payload?.exp) {
-    // Opaque / non-JWT tokens: can't judge locally; rely on API 401 handling.
-    return false;
-  }
-  const now = Math.floor(Date.now() / 1000);
-  return payload.exp <= now + EXPIRY_SKEW_SECONDS;
-}
-
-/** Returns a non-expired access token, or null after ending a stale session. */
+/** Returns a non-expired access token, refreshing when possible. */
 export async function getValidAccessToken(): Promise<string | null> {
-  const token = await getAccessToken();
+  const token = await getStoredAccessToken();
   if (!token) return null;
 
-  if (isTokenExpired(token)) {
-    await handleUnauthorized();
+  if (!isTokenExpired(token)) return token;
+
+  const refreshed = await refreshAccessToken();
+  if (refreshed) return refreshed;
+
+  await handleUnauthorized();
+  return null;
+}
+
+/**
+ * ID token for our own API. Graph access tokens cannot be signature-checked
+ * by third-party APIs (Microsoft puts a nonce in the header).
+ */
+export async function getValidIdToken(): Promise<string | null> {
+  const token = await getStoredIdToken();
+  if (token && !isTokenExpired(token)) return token;
+
+  const refreshed = await refreshAccessToken();
+  if (!refreshed) {
+    if (token) await handleUnauthorized();
     return null;
   }
 
-  return token;
+  const next = await getStoredIdToken();
+  if (next && !isTokenExpired(next)) return next;
+
+  await handleUnauthorized();
+  return null;
 }
 
 /** Clear stored session and send the user back to sign-in (deduped). */
@@ -79,7 +145,6 @@ export async function handleUnauthorized(): Promise<void> {
       // Navigator may not be mounted yet (e.g. splash). Auth gates still redirect.
     }
   } finally {
-    // Allow a later session to trigger this again after remount/sign-in.
     setTimeout(() => {
       handlingUnauthorized = false;
     }, 1500);

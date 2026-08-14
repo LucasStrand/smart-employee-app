@@ -7,6 +7,7 @@ import {
   getGridItemWidth,
   GRID_GAP,
   useResponsiveColumnCount,
+  WIDE_GRID_BREAKPOINT,
 } from "@/lib/responsiveGrid";
 import type {
   Block,
@@ -499,8 +500,9 @@ const ColumnCard: React.FC<{
       style={{
         width,
         backgroundColor: colors.surfaceRaised,
-        borderRadius: 14,
-        padding: 16,
+        borderRadius: 18,
+        paddingHorizontal: 18,
+        paddingVertical: 18,
         borderWidth: 1,
         borderColor: colors.border,
       }}
@@ -510,9 +512,10 @@ const ColumnCard: React.FC<{
               style={{
                 color: colors.text,
                 fontFamily: "Jakarta-Bold",
-                fontSize: 15,
-                marginBottom: 10,
+                fontSize: 16,
+                marginBottom: 12,
                 letterSpacing: -0.2,
+                lineHeight: 22,
               }}
             >
               {col.title}
@@ -523,32 +526,32 @@ const ColumnCard: React.FC<{
               style={{
                 color: colors.textMuted,
                 fontFamily: "Jakarta",
-                fontSize: 14,
-                lineHeight: 22,
-                marginBottom: col.items ? 10 : 0,
+                fontSize: 15,
+                lineHeight: 23,
+                marginBottom: col.items ? 12 : 0,
               }}
             >
               {col.paragraph}
             </Text>
           )}
           {col.items && (
-            <View style={{ gap: 8 }}>
+            <View style={{ gap: 10 }}>
               {col.items.map((item, j) => (
                 <View
                   key={j}
                   style={{
                     flexDirection: "row",
-                    gap: 9,
+                    gap: 10,
                     alignItems: "flex-start",
                   }}
                 >
                   <View
                     style={{
-                      width: 5,
-                      height: 5,
+                      width: 6,
+                      height: 6,
                       borderRadius: 999,
                       backgroundColor: accent ?? colors.brand,
-                      marginTop: 9,
+                      marginTop: 8,
                     }}
                   />
                   <Text
@@ -556,8 +559,8 @@ const ColumnCard: React.FC<{
                       flex: 1,
                       color: colors.textMuted,
                       fontFamily: "Jakarta",
-                      fontSize: 14,
-                      lineHeight: 21,
+                      fontSize: 14.5,
+                      lineHeight: 22,
                     }}
                   >
                     {item}
@@ -575,15 +578,25 @@ const ColumnsView: React.FC<{ block: ColumnsBlock; accent?: string }> = ({
   accent,
 }) => {
   const { width: screenWidth } = useWindowDimensions();
+  // Phone: stack so list cards aren't squeezed into ~45% width.
+  const stacked = screenWidth < WIDE_GRID_BREAKPOINT;
   const responsiveColumns = useResponsiveColumnCount(block.count);
-  const columnCount = Math.min(block.columns.length, responsiveColumns);
+  const columnCount = stacked
+    ? 1
+    : Math.min(block.columns.length, responsiveColumns);
   const itemWidth = getGridItemWidth(screenWidth, columnCount, {
-    gap: GRID_GAP,
+    gap: stacked ? 14 : GRID_GAP,
     horizontalPadding: 20,
   });
 
   return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GRID_GAP }}>
+    <View
+      style={{
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: stacked ? 14 : GRID_GAP,
+      }}
+    >
       {block.columns.map((col, i) => (
         <ColumnCard key={i} col={col} accent={accent} width={itemWidth} />
       ))}

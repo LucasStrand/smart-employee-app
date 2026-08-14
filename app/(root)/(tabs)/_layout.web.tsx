@@ -150,7 +150,6 @@ export default function Layout() {
           ),
         }}
       />
-      <Tabs.Screen name="history" options={{ href: null }} />
     </Tabs>
   );
 }

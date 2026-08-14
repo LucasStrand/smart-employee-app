@@ -1,18 +1,59 @@
 import { neon } from "@neondatabase/serverless";
 
+import { requireAuth } from "@/lib/requireAuth";
+
 export async function POST(request: Request) {
+  const auth = await requireAuth(request);
+  if (!auth.ok) return auth.response;
+
   try {
     const sql = neon(`${process.env.DATABASE_URL}`);
-    const { azureAdId, name, email, role } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const name =
+      (typeof body.name === "string" && body.name) ||
+      (typeof auth.payload.name === "string" && auth.payload.name) ||
+      "Unknown User";
+    const email =
+      (typeof body.email === "string" && body.email) ||
+      (typeof auth.payload.email === "string" && auth.payload.email) ||
+      (typeof auth.payload.preferred_username === "string" &&
+        auth.payload.preferred_username) ||
+      "No Email";
+    const role =
+      (typeof body.role === "string" && body.role) || "employee";
 
-    if (!azureAdId || !name || !email) {
+    const oid = auth.oid ?? auth.azureAdId;
+    const sub = auth.sub ?? auth.azureAdId;
+
+    const [existing] = await sql`
+      SELECT id, azure_ad_id FROM users
+      WHERE azure_ad_id = ${oid} OR azure_ad_id = ${sub}
+      LIMIT 1
+    `;
+
+    const canonicalId = auth.azureAdId;
+
+    if (existing) {
+      const [userRow] = await sql`
+        UPDATE users
+        SET
+          name = ${name},
+          email = ${email},
+          azure_ad_id = ${canonicalId},
+          last_login_datetime = NOW()
+        WHERE id = ${existing.id}
+        RETURNING id, azure_ad_id, name, email, role
+      `;
       return Response.json(
-        { error: "Missing required fields" },
-        { status: 400 }
+        {
+          message: "User saved successfully",
+          userId: userRow.id,
+          userRow,
+        },
+        { status: 200 }
       );
     }
 
-    // Postgres trick: RETURNING id after ON CONFLICT
     const [userRow] = await sql`
       INSERT INTO users (
         azure_ad_id,
@@ -22,24 +63,20 @@ export async function POST(request: Request) {
         created_datetime,
         last_login_datetime
       ) VALUES (
-        ${azureAdId},
+        ${canonicalId},
         ${name},
         ${email},
-        ${role || "employee"},
+        ${role},
         NOW(),
         NOW()
       )
-      ON CONFLICT (azure_ad_id)
-      DO UPDATE SET
-        last_login_datetime = NOW()
-      RETURNING id, azure_ad_id, name, email, role;
+      RETURNING id, azure_ad_id, name, email, role
     `;
 
-    // userRow might look like { id: 3, azure_ad_id: "...", name: "...", ... }
     return Response.json(
       {
         message: "User saved successfully",
-        userId: userRow.id, // We explicitly return the user's numeric ID
+        userId: userRow.id,
         userRow,
       },
       { status: 201 }

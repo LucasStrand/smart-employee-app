@@ -1,5 +1,6 @@
 // lib/apiConfig.ts
-import { getValidAccessToken } from "./auth";
+import { getValidAccessToken, getValidIdToken } from "./auth";
+import { getNeonApiBaseUrl } from "./apiBaseUrl";
 
 export enum ApiType {
   NEON = "neon",
@@ -14,8 +15,8 @@ type ApiConfig = {
 
 export const API_CONFIG: Record<ApiType, ApiConfig> = {
   [ApiType.NEON]: {
-    baseURL: "",
-    getToken: async () => null,
+    baseURL: getNeonApiBaseUrl(),
+    getToken: async () => getValidIdToken(),
   },
   [ApiType.NEXT]: {
     baseURL: process.env.EXPO_PUBLIC_NEXT_API_URL ?? "",

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import {
   Alert,
-  Switch,
+  Image,
+  Linking,
   Text,
   TouchableOpacity,
   View,
@@ -13,6 +14,9 @@ import { useTheme } from "@/lib/ThemeContext";
 import { ApiType } from "@/lib/apiConfig";
 import { fetchAPI } from "@/lib/fetch";
 import { clearSession, getValidAccessToken } from "@/lib/auth";
+import { fetchGraphPhoto } from "@/lib/graphPhoto";
+import { SUPPORT_EMAIL } from "@/lib/support";
+import { manualMeta } from "@/lib/manual";
 
 import { CollapsibleScreen } from "@/components/playbook/CollapsibleScreen";
 import { ScreenHeader } from "@/components/playbook/ScreenHeader";
@@ -22,6 +26,7 @@ type IconName = keyof typeof Ionicons.glyphMap;
 interface UserData {
   name: string;
   email: string;
+  photoUri?: string | null;
 }
 
 const Profile = () => {
@@ -29,18 +34,30 @@ const Profile = () => {
   const { colors, mode, appearance, setAppearance } = useTheme();
 
   const [user, setUser] = useState<UserData | null>(null);
-  const [notifications, setNotifications] = useState(true);
-  const [offline, setOffline] = useState(false);
+
+  const openMail = async (subject: string) => {
+    const url = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}`;
+    const canOpen = await Linking.canOpenURL(url);
+    if (!canOpen) {
+      Alert.alert("E-post", `Skicka till ${SUPPORT_EMAIL}`);
+      return;
+    }
+    await Linking.openURL(url);
+  };
 
   useEffect(() => {
     (async () => {
       try {
         const token = await getValidAccessToken();
         if (!token) return;
-        const data = await fetchAPI("/me", { method: "GET" }, ApiType.GRAPH);
+        const [data, photoUri] = await Promise.all([
+          fetchAPI("/me", { method: "GET" }, ApiType.GRAPH),
+          fetchGraphPhoto(),
+        ]);
         setUser({
           name: data?.displayName || data?.givenName || "Användare",
           email: data?.mail || data?.userPrincipalName || "",
+          photoUri,
         });
       } catch {
         // 401 clears session + redirects via fetchAPI
@@ -91,17 +108,26 @@ const Profile = () => {
                 borderColor: colors.borderBrand,
                 alignItems: "center",
                 justifyContent: "center",
+                overflow: "hidden",
               }}
             >
-              <Text
-                style={{
-                  color: colors.brand,
-                  fontFamily: "Jakarta-ExtraBold",
-                  fontSize: 22,
-                }}
-              >
-                {user?.name?.[0]?.toUpperCase() ?? "?"}
-              </Text>
+              {user?.photoUri ? (
+                <Image
+                  source={{ uri: user.photoUri }}
+                  style={{ width: 56, height: 56 }}
+                  accessibilityLabel="Profilbild"
+                />
+              ) : (
+                <Text
+                  style={{
+                    color: colors.brand,
+                    fontFamily: "Jakarta-ExtraBold",
+                    fontSize: 22,
+                  }}
+                >
+                  {user?.name?.[0]?.toUpperCase() ?? "?"}
+                </Text>
+              )}
             </View>
             <View style={{ flex: 1 }}>
               <Text
@@ -132,12 +158,11 @@ const Profile = () => {
           </View>
 
           {/* Appearance section */}
-          <Section title="Utseende">
+          <Section title="Utseende" framed={false}>
             <View
               style={{
                 flexDirection: "row",
                 gap: 10,
-                marginBottom: 10,
               }}
             >
               <AppearanceTile
@@ -164,49 +189,19 @@ const Profile = () => {
                 color: colors.textSubtle,
                 fontFamily: "Jakarta",
                 fontSize: 12,
-                marginTop: 4,
+                lineHeight: 18,
+                marginTop: 12,
+                paddingHorizontal: 4,
               }}
             >
-              {mode === "dark"
-                ? "Mörkt läge är aktivt."
-                : "Ljust läge är aktivt."}
+              {appearance === "system"
+                ? mode === "dark"
+                  ? "Följer enheten · mörkt just nu"
+                  : "Följer enheten · ljust just nu"
+                : appearance === "dark"
+                  ? "Mörkt läge är valt."
+                  : "Ljust läge är valt."}
             </Text>
-          </Section>
-
-          {/* Preferences */}
-          <Section title="Inställningar">
-            <Row
-              icon="notifications-outline"
-              label="Aviseringar"
-              hint="När nya kapitel publiceras"
-              right={
-                <Switch
-                  value={notifications}
-                  onValueChange={setNotifications}
-                  trackColor={{
-                    false: colors.surfaceMuted,
-                    true: colors.brand,
-                  }}
-                  thumbColor="#fff"
-                />
-              }
-            />
-            <Row
-              icon="cloud-download-outline"
-              label="Offline-läge"
-              hint="Spara manualen lokalt"
-              right={
-                <Switch
-                  value={offline}
-                  onValueChange={setOffline}
-                  trackColor={{
-                    false: colors.surfaceMuted,
-                    true: colors.brand,
-                  }}
-                  thumbColor="#fff"
-                />
-              }
-            />
           </Section>
 
           {/* General */}
@@ -214,25 +209,25 @@ const Profile = () => {
             <Row
               icon="information-circle-outline"
               label="Om vår manual"
-              hint="Version 4.0"
+              hint={manualMeta.version}
               onPress={() =>
                 Alert.alert(
-                  "Smart Teknik Standard",
-                  "Version 4.0\nIntern arbetsstandard för projekt, nätverk, kabelmärkning och rackbyggnad."
+                  manualMeta.title,
+                  `${manualMeta.version}\nIntern arbetsstandard för projekt, nätverk, kabelmärkning och rackbyggnad.`
                 )
               }
             />
             <Row
               icon="help-circle-outline"
               label="Hjälp & support"
-              hint="Hör av dig till oss"
-              onPress={() => {}}
+              hint={SUPPORT_EMAIL}
+              onPress={() => openMail("Support — Smart Employee App")}
             />
             <Row
               icon="mail-outline"
               label="Skicka feedback"
               hint="Hjälp oss göra appen bättre"
-              onPress={() => {}}
+              onPress={() => openMail("Feedback — Smart Employee App")}
             />
           </Section>
 
@@ -270,8 +265,9 @@ const Profile = () => {
 
 const Section: React.FC<{
   title: string;
+  framed?: boolean;
   children: React.ReactNode;
-}> = ({ title, children }) => {
+}> = ({ title, framed = true, children }) => {
   const { colors } = useTheme();
   return (
     <View style={{ marginBottom: 22 }}>
@@ -288,17 +284,21 @@ const Section: React.FC<{
       >
         {title}
       </Text>
-      <View
-        style={{
-          backgroundColor: colors.surface,
-          borderRadius: 18,
-          borderWidth: 1,
-          borderColor: colors.border,
-          overflow: "hidden",
-        }}
-      >
-        {children}
-      </View>
+      {framed ? (
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderRadius: 18,
+            borderWidth: 1,
+            borderColor: colors.border,
+            overflow: "hidden",
+          }}
+        >
+          {children}
+        </View>
+      ) : (
+        children
+      )}
     </View>
   );
 };
@@ -387,18 +387,21 @@ const AppearanceTile: React.FC<{
       activeOpacity={0.85}
       style={{
         flex: 1,
-        padding: 14,
+        paddingVertical: 16,
+        paddingHorizontal: 8,
         borderRadius: 16,
         backgroundColor: active ? colors.brandGlow : colors.surface,
         borderWidth: 1,
         borderColor: active ? colors.borderBrand : colors.border,
         alignItems: "center",
-        gap: 8,
+        gap: 10,
+        minHeight: 88,
+        justifyContent: "center",
       }}
     >
       <Ionicons
         name={icon}
-        size={20}
+        size={22}
         color={active ? colors.brand : colors.textMuted}
       />
       <Text

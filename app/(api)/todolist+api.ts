@@ -1,8 +1,13 @@
 import { neon } from "@neondatabase/serverless";
 
+import { requireAuth, requireLocalUser } from "@/lib/requireAuth";
+
 const sql = neon(`${process.env.DATABASE_URL}`);
-// POST: Create ToDo lists for active workorders
+
 export async function POST(request: Request) {
+  const auth = await requireAuth(request);
+  if (!auth.ok) return auth.response;
+
   try {
     const { workorders } = await request.json();
 
@@ -24,20 +29,17 @@ export async function POST(request: Request) {
         projectname,
       } = workorder;
 
-      // Check if ToDo list already exists
       const [existingList] = await sql`
           SELECT id FROM todo_lists WHERE workorder_id = ${workorder_id};
         `;
       if (existingList) continue;
 
-      // Create ToDo list
       const [newList] = await sql`
           INSERT INTO todo_lists (workorder_id, name, description, belongs_to, created)
           VALUES (${workorder_id}, ${name}, ${description}, ${projectnumber + " - " + projectname}, NOW())
           RETURNING id;
         `;
 
-      // Insert default tasks
       for (const todo of defaultTodos) {
         await sql`
             INSERT INTO todos (todolist_id, text, completed)
@@ -53,8 +55,10 @@ export async function POST(request: Request) {
   }
 }
 
-// GET: Search all ToDo lists
 export async function GET(request: Request) {
+  const auth = await requireAuth(request);
+  if (!auth.ok) return auth.response;
+
   try {
     const url = new URL(request.url);
     const searchQuery = url.searchParams.get("query") || "";
@@ -76,17 +80,29 @@ export async function GET(request: Request) {
   }
 }
 
-// PATCH: Update a single todo's completed status
 export async function PATCH(request: Request) {
+  const user = await requireLocalUser(request);
+  if (!user.ok) return user.response;
+
   try {
-    // Extract the ID and completed status from the request body
     const { id, completed } = await request.json();
 
     if (!id || typeof completed !== "boolean") {
       return Response.json({ error: "Invalid data" }, { status: 400 });
     }
 
-    // Update the todo in the database
+    const [owned] = await sql`
+        SELECT todos.id
+        FROM todos
+        JOIN todo_lists ON todos.todolist_id = todo_lists.id
+        WHERE todos.id = ${id} AND todo_lists.user_id = ${user.userId}
+        LIMIT 1
+      `;
+
+    if (!owned) {
+      return Response.json({ error: "Todo not found" }, { status: 404 });
+    }
+
     const updated = await sql`
         UPDATE todos
         SET completed = ${completed}
@@ -94,12 +110,6 @@ export async function PATCH(request: Request) {
         RETURNING id, completed;
       `;
 
-    // Handle cases where the todo is not found
-    if (updated.length === 0) {
-      return Response.json({ error: "Todo not found" }, { status: 404 });
-    }
-
-    // Return success response
     return Response.json({
       message: "Todo updated successfully",
       todo: updated[0],

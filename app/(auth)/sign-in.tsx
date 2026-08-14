@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import {
   Alert,
   Image,
@@ -11,12 +11,19 @@ import {
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as AuthSession from "expo-auth-session";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/lib/ThemeContext";
 import { images } from "@/constants";
-import { setAccessToken } from "@/lib/auth";
+import {
+  AUTH_SCOPE_STRING,
+  AUTH_SCOPES,
+  AZURE_CLIENT_ID,
+  AZURE_DISCOVERY_URL,
+} from "@/lib/authConfig";
+import { setLocalUserId, setSessionTokens } from "@/lib/auth";
+import { parseJwtPayload } from "@/lib/jwt";
+import { ApiType } from "@/lib/apiConfig";
 import { fetchAPI } from "@/lib/fetch";
 import { Background } from "@/components/playbook/Background";
 
@@ -26,30 +33,35 @@ const SignIn = () => {
   const { colors, mode } = useTheme();
   const logoSource = mode === "dark" ? images.logoWhite : images.logo;
 
-  const CLIENT_ID = "25e06da5-7be9-41d6-b000-ffde4e36069a";
-  const TENANT_ID = "efacdbb3-8b4e-4d16-8110-4bfb66410cd7";
-  const REDIRECT_URI = AuthSession.makeRedirectUri({ scheme: "exp" });
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: "smart-employee-app",
+    path: "auth",
+  });
+  const discovery = AuthSession.useAutoDiscovery(AZURE_DISCOVERY_URL);
 
-  const AUTHORITY = `https://login.microsoftonline.com/${TENANT_ID}`;
-  const AUTH_URL = `${AUTHORITY}/oauth2/v2.0/authorize`;
-  const TOKEN_URL = `${AUTHORITY}/oauth2/v2.0/token`;
-
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+  const [request, , promptAsync] = AuthSession.useAuthRequest(
     {
-      clientId: CLIENT_ID,
-      redirectUri: REDIRECT_URI,
-      scopes: ["openid", "profile", "email", "User.Read"],
+      clientId: AZURE_CLIENT_ID,
+      redirectUri,
+      scopes: [...AUTH_SCOPES],
       responseType: "code",
+      extraParams: {
+        prompt: "select_account",
+      },
       codeChallengeMethod: AuthSession.CodeChallengeMethod.S256,
     },
-    {
-      authorizationEndpoint: AUTH_URL,
-      tokenEndpoint: TOKEN_URL,
-    }
+    discovery
   );
 
   const handleSignIn = async () => {
-    if (!request) return;
+    if (!AZURE_CLIENT_ID) {
+      Alert.alert(
+        "Saknad konfiguration",
+        "EXPO_PUBLIC_AZURE_CLIENT_ID och EXPO_PUBLIC_AZURE_TENANT_ID måste sättas i .env."
+      );
+      return;
+    }
+    if (!request || !discovery?.tokenEndpoint) return;
 
     const result = await promptAsync();
     if (result.type !== "success") {
@@ -59,15 +71,17 @@ const SignIn = () => {
 
     try {
       const tokenBody = new URLSearchParams({
-        client_id: CLIENT_ID,
-        scope: "openid profile email User.Read",
+        client_id: AZURE_CLIENT_ID,
+        scope: AUTH_SCOPE_STRING,
         code: result.params.code,
-        redirect_uri: REDIRECT_URI,
+        redirect_uri: redirectUri,
         grant_type: "authorization_code",
       });
-      if (request.codeVerifier) tokenBody.set("code_verifier", request.codeVerifier);
+      if (request.codeVerifier) {
+        tokenBody.set("code_verifier", request.codeVerifier);
+      }
 
-      const tokenResponse = await fetch(TOKEN_URL, {
+      const tokenResponse = await fetch(discovery.tokenEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: tokenBody.toString(),
@@ -79,26 +93,51 @@ const SignIn = () => {
         return;
       }
 
-      const idToken = tokenData.id_token;
-      const decodedToken = JSON.parse(atob(idToken.split(".")[1]));
+      const idToken = tokenData.id_token as string | undefined;
+      const decodedToken = idToken ? parseJwtPayload(idToken) : null;
+      if (!decodedToken) {
+        Alert.alert("Inloggningen misslyckades", "Kunde inte läsa id-token.");
+        return;
+      }
 
-      await setAccessToken(tokenData.access_token);
-
-      const upsertRes = await fetchAPI("/(api)/user", {
-        method: "POST",
-        body: JSON.stringify({
-          name: decodedToken.name || "Unknown User",
-          email:
-            decodedToken.email || decodedToken.preferred_username || "No Email",
-          azureAdId: decodedToken.sub,
-          role: "employee",
-        }),
+      await setSessionTokens({
+        accessToken: tokenData.access_token,
+        idToken: tokenData.id_token,
+        refreshToken: tokenData.refresh_token,
       });
 
-      if (upsertRes && upsertRes.userId) {
-        await AsyncStorage.setItem("local_user_id", String(upsertRes.userId));
-      } else {
-        await AsyncStorage.setItem("local_user_id", "3");
+      try {
+        const upsertRes = await fetchAPI(
+          "/user",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              name: decodedToken.name || "Unknown User",
+              email:
+                decodedToken.email ||
+                decodedToken.preferred_username ||
+                "No Email",
+              azureAdId: decodedToken.oid || decodedToken.sub,
+              role: "employee",
+            }),
+          },
+          ApiType.NEON,
+          { resetOnUnauthorized: false }
+        );
+
+        if (upsertRes?.userId) {
+          await setLocalUserId(String(upsertRes.userId));
+        } else {
+          Alert.alert(
+            "Profilen synkades inte",
+            "Du är inloggad, men arbetsordrar kan saknas tills du loggar in igen."
+          );
+        }
+      } catch {
+        Alert.alert(
+          "Profilen synkades inte",
+          "Du är inloggad, men arbetsordrar kan saknas tills du loggar in igen."
+        );
       }
 
       router.replace("/(root)/(tabs)/home");
@@ -107,13 +146,6 @@ const SignIn = () => {
       Alert.alert("Fel", "Något gick fel vid inloggningen.");
     }
   };
-
-  useEffect(() => {
-    if (response?.type === "success") {
-      // eslint-disable-next-line no-console
-      console.log("Response:", response);
-    }
-  }, [response]);
 
   return (
     <Background>
@@ -178,6 +210,7 @@ const SignIn = () => {
             <TouchableOpacity
               activeOpacity={0.9}
               onPress={handleSignIn}
+              disabled={!request}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
@@ -186,6 +219,7 @@ const SignIn = () => {
                 backgroundColor: colors.brand,
                 paddingVertical: 16,
                 borderRadius: 999,
+                opacity: request ? 1 : 0.6,
               }}
             >
               <Ionicons
@@ -217,6 +251,23 @@ const SignIn = () => {
               Genom att logga in godkänner du Smart Tekniks interna
               användarvillkor för manualer och arbetsordrar.
             </Text>
+            {__DEV__ ? (
+              <Text
+                selectable
+                style={{
+                  color: colors.textSubtle,
+                  fontFamily: "Jakarta",
+                  fontSize: 11,
+                  textAlign: "center",
+                  marginTop: 12,
+                  paddingHorizontal: 8,
+                  lineHeight: 16,
+                }}
+              >
+                Entra redirect URI (måste matcha exakt):{"\n"}
+                {redirectUri}
+              </Text>
+            ) : null}
           </View>
         </ScrollView>
       </SafeAreaView>

@@ -1,54 +1,81 @@
-// src/api/fetchAPI.ts
 import { API_CONFIG, ApiType } from "./apiConfig";
-import { handleUnauthorized, UnauthorizedError } from "./auth";
+import {
+  handleUnauthorized,
+  refreshAccessToken,
+  UnauthorizedError,
+} from "./auth";
+
+export type FetchAPIFlags = {
+  /** When false, 401 throws without clearing the session. Default true. */
+  resetOnUnauthorized?: boolean;
+};
 
 export async function fetchAPI(
   endpointOrUrl: string,
   options: RequestInit = {},
-  apiType: ApiType = ApiType.NEON // default to NEON
+  apiType: ApiType = ApiType.NEON,
+  flags: FetchAPIFlags = {}
 ): Promise<any> {
-  // Get config for the chosen API
+  const resetOnUnauthorized = flags.resetOnUnauthorized !== false;
   const { baseURL, getToken } = API_CONFIG[apiType];
 
-  // Determine if the endpoint is fully qualified or relative
   const finalURL = endpointOrUrl.startsWith("http")
     ? endpointOrUrl
     : `${baseURL}${endpointOrUrl}`;
 
-  // Retrieve the token (if this API uses one)
-  let token = null;
-  if (getToken) {
-    token = await getToken();
+  const token = getToken ? await getToken() : null;
+  const response = await send(finalURL, options, token);
+
+  if (response.status === 401) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      const retriedToken = getToken ? await getToken() : refreshed;
+      if (retriedToken && retriedToken !== token) {
+        const retried = await send(finalURL, options, retriedToken);
+        if (retried.ok) {
+          return retried.json();
+        }
+        if (retried.status !== 401) {
+          throw await httpError(retried);
+        }
+      }
+    }
+
+    if (resetOnUnauthorized) {
+      await handleUnauthorized();
+    }
+    throw new UnauthorizedError();
   }
 
+  if (!response.ok) {
+    const error = await httpError(response);
+    console.error("Fetch error:", error);
+    throw error;
+  }
+
+  return response.json();
+}
+
+async function httpError(response: Response): Promise<Error> {
+  let detail = "";
+  try {
+    const body = await response.clone().json();
+    if (body?.error) detail = `: ${body.error}`;
+  } catch {
+    // ignore
+  }
+  return new Error(`HTTP error! Status: ${response.status}${detail}`);
+}
+
+function send(
+  url: string,
+  options: RequestInit,
+  token: string | null
+): Promise<Response> {
   const headers = new Headers(options.headers);
   headers.set("Content-Type", "application/json");
-
-  // If we have a token, attach it
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
-
-  try {
-    const response = await fetch(finalURL, {
-      ...options,
-      headers,
-    });
-
-    if (response.status === 401 && token) {
-      await handleUnauthorized();
-      throw new UnauthorizedError();
-    }
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    if (!(error instanceof UnauthorizedError)) {
-      console.error("Fetch error:", error);
-    }
-    throw error;
-  }
+  return fetch(url, { ...options, headers });
 }

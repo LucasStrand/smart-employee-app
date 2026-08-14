@@ -6,12 +6,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/lib/ThemeContext";
 import { fetchAPI } from "@/lib/fetch";
+import { getLocalUserId } from "@/lib/auth";
 import { ToDoList } from "@/types/type";
 
 import { CollapsibleScreen } from "@/components/playbook/CollapsibleScreen";
@@ -25,8 +25,10 @@ const BrowseWorkOrders = () => {
   const [todolists, setTodolists] = useState<ToDoList[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [myUserId, setMyUserId] = useState<string | null>(null);
 
   useEffect(() => {
+    getLocalUserId().then(setMyUserId);
     fetchTodolists();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -47,15 +49,10 @@ const BrowseWorkOrders = () => {
 
   const assignTodoList = async (todoListId: string) => {
     try {
-      const userId = await AsyncStorage.getItem("local_user_id");
-      if (!userId) {
-        Alert.alert("Fel", "Användar-ID saknas. Logga in igen.");
-        return;
-      }
       const response = await fetchAPI(`/assigned-todolist`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ todoListId, userId }),
+        body: JSON.stringify({ todoListId }),
       });
       if (response?.message === "Todo List assigned successfully") {
         Alert.alert("Klart", "Arbetsordern är tilldelad till dig.");
@@ -68,6 +65,29 @@ const BrowseWorkOrders = () => {
       Alert.alert("Fel", "Ett oväntat fel uppstod.");
     }
   };
+
+  const unassignTodoList = async (todoListId: string) => {
+    try {
+      const response = await fetchAPI(`/assigned-todolist`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ todoListId }),
+      });
+      if (response?.message === "Todo list unassigned successfully") {
+        fetchTodolists(searchQuery);
+      } else {
+        Alert.alert("Fel", "Kunde inte ta bort tilldelningen.");
+      }
+    } catch (error) {
+      console.error("Error unassigning todo list:", error);
+      Alert.alert("Fel", "Ett oväntat fel uppstod.");
+    }
+  };
+
+  const isTaken = (userId: unknown) =>
+    userId != null && String(userId) !== "";
+  const isMine = (userId: unknown) =>
+    Boolean(myUserId) && isTaken(userId) && String(userId) === String(myUserId);
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
@@ -166,7 +186,10 @@ const BrowseWorkOrders = () => {
               </View>
             ) : (
               <View style={{ gap: 12 }}>
-                {todolists.map((item) => (
+                {todolists.map((item) => {
+                  const mine = isMine(item.user_id);
+                  const takenByOther = isTaken(item.user_id) && !mine;
+                  return (
                   <View
                     key={item.id}
                     style={{
@@ -225,10 +248,12 @@ const BrowseWorkOrders = () => {
                           {item.belongs_to}
                         </Text>
                       </View>
-                      {item.user_id !== null ? (
+                      {mine ? (
+                        <Pill label="Din" variant="brand" />
+                      ) : takenByOther ? (
                         <Pill label="Upptagen" variant="outline" />
                       ) : (
-                        <Pill label="Ledig" variant="brand" />
+                        <Pill label="Ledig" variant="outline" />
                       )}
                     </View>
 
@@ -248,8 +273,12 @@ const BrowseWorkOrders = () => {
 
                     <TouchableOpacity
                       activeOpacity={0.85}
-                      disabled={item.user_id !== null}
-                      onPress={() => assignTodoList(item.id)}
+                      disabled={takenByOther}
+                      onPress={() =>
+                        mine
+                          ? unassignTodoList(item.id)
+                          : assignTodoList(item.id)
+                      }
                       style={{
                         marginTop: 14,
                         paddingVertical: 12,
@@ -258,22 +287,27 @@ const BrowseWorkOrders = () => {
                         flexDirection: "row",
                         justifyContent: "center",
                         gap: 6,
-                        backgroundColor:
-                          item.user_id !== null
+                        backgroundColor: takenByOther
+                          ? colors.surfaceMuted
+                          : mine
                             ? colors.surfaceMuted
                             : colors.brand,
-                        opacity: item.user_id !== null ? 0.6 : 1,
+                        opacity: takenByOther ? 0.6 : 1,
+                        borderWidth: mine ? 1 : 0,
+                        borderColor: colors.border,
                       }}
                     >
                       <Ionicons
                         name={
-                          item.user_id !== null
+                          takenByOther
                             ? "lock-closed-outline"
-                            : "add-circle-outline"
+                            : mine
+                              ? "remove-circle-outline"
+                              : "add-circle-outline"
                         }
                         size={16}
                         color={
-                          item.user_id !== null
+                          takenByOther || mine
                             ? colors.textSubtle
                             : colors.brandOnBrand
                         }
@@ -281,18 +315,23 @@ const BrowseWorkOrders = () => {
                       <Text
                         style={{
                           color:
-                            item.user_id !== null
+                            takenByOther || mine
                               ? colors.textSubtle
                               : colors.brandOnBrand,
                           fontFamily: "Jakarta-Bold",
                           fontSize: 13,
                         }}
                       >
-                        {item.user_id !== null ? "Upptagen" : "Tilldela mig"}
+                        {takenByOther
+                          ? "Upptagen"
+                          : mine
+                            ? "Ta bort tilldelning"
+                            : "Tilldela mig"}
                       </Text>
                     </TouchableOpacity>
                   </View>
-                ))}
+                  );
+                })}
               </View>
             )}
         </>

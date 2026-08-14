@@ -1,18 +1,14 @@
 import { neon } from "@neondatabase/serverless";
 
+import { requireLocalUser } from "@/lib/requireAuth";
+
 const sql = neon(process.env.DATABASE_URL || "");
 
 export async function GET(request: Request) {
+  const user = await requireLocalUser(request);
+  if (!user.ok) return user.response;
+
   try {
-    const url = new URL(request.url);
-    const userId = url.searchParams.get("user_id");
-
-    if (!userId) {
-      return new Response(JSON.stringify({ error: "Missing user_id" }), {
-        status: 400,
-      });
-    }
-
     const query = `
       SELECT
         todo_lists.id,
@@ -33,12 +29,12 @@ export async function GET(request: Request) {
       FROM todo_lists
       LEFT JOIN todos ON todo_lists.id = todos.todolist_id
       WHERE todo_lists.user_id = $1
+        AND COALESCE(todo_lists.is_history, FALSE) = FALSE
       GROUP BY todo_lists.id
       ORDER BY todo_lists.created DESC;
     `;
 
-    // Use the second overload of `sql` for a string query
-    const rows = await sql(query, [userId]); // Pass parameters as an array
+    const rows = await sql(query, [user.userId]);
 
     return new Response(JSON.stringify(rows), { status: 200 });
   } catch (error) {
@@ -54,21 +50,22 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  try {
-    const { todoListId, userId } = await request.json();
+  const user = await requireLocalUser(request);
+  if (!user.ok) return user.response;
 
-    if (!todoListId || !userId) {
-      return new Response(
-        JSON.stringify({ error: "Missing todoListId or userId" }),
-        { status: 400 }
-      );
+  try {
+    const { todoListId } = await request.json();
+
+    if (!todoListId) {
+      return new Response(JSON.stringify({ error: "Missing todoListId" }), {
+        status: 400,
+      });
     }
 
-    // Update the `user_id` column in the `todo_lists` table
     const result = await sql`
         UPDATE todo_lists
-        SET user_id = ${userId}
-        WHERE id = ${todoListId}
+        SET user_id = ${user.userId}
+        WHERE id = ${todoListId} AND user_id IS NULL
         RETURNING id, name, user_id;
       `;
 
@@ -99,6 +96,9 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const user = await requireLocalUser(request);
+  if (!user.ok) return user.response;
+
   try {
     const { todoListId } = await request.json();
 
@@ -108,11 +108,10 @@ export async function PATCH(request: Request) {
       });
     }
 
-    // Set user_id = NULL for the specified list
     const result = await sql`
       UPDATE todo_lists
       SET user_id = NULL
-      WHERE id = ${todoListId}
+      WHERE id = ${todoListId} AND user_id = ${user.userId}
       RETURNING id, user_id, name;
     `;
 

@@ -11,7 +11,7 @@ file-based routing.
 
 - **Expo Router** — file-based routing (`app/`)
 - **NativeWind / Tailwind** — styling, with a custom theme in `lib/theme.ts` + `lib/ThemeContext.tsx`
-- **expo-auth-session** — Microsoft Azure AD (OAuth 2.0 + PKCE) sign-in
+- **expo-auth-session** — Microsoft Azure AD (OAuth 2.0 + PKCE) sign-in, with refresh tokens
 - **Neon (Postgres)** — data, accessed through Expo Router API routes in `app/(api)/`
 - **Microsoft Graph** — user profile (`/me`)
 
@@ -35,17 +35,7 @@ lib/             theme, auth, fetch, api config, manual content, hooks
    npm install
    ```
 
-2. Create a `.env` file (values not committed):
-
-   | Variable | Purpose |
-   | --- | --- |
-   | `DATABASE_URL` | Neon Postgres connection string (used by `app/(api)/` routes) |
-   | `EXPO_PUBLIC_GRAPH_API` | Microsoft Graph base URL (for `/me`) |
-   | `EXPO_PUBLIC_NEXT_API_URL` | Optional secondary API base URL |
-   | `EXPO_PUBLIC_NEXT_TOKEN` | Token for the secondary API |
-   | `EXPO_PUBLIC_SERVER_URL` | Server URL for relative API calls |
-
-   Azure AD `CLIENT_ID` / `TENANT_ID` are currently set in `app/(auth)/sign-in.tsx`.
+2. Copy `.env.example` to `.env` and fill in values (`.env` is not committed).
 
 3. Start the app:
 
@@ -53,18 +43,46 @@ lib/             theme, auth, fetch, api config, manual content, hooks
    npx expo start
    ```
 
-   Then open in a development build, Android emulator, iOS simulator, or Expo Go.
+   Prefer a **physical device** or a **dev build** for Microsoft login. Android
+   emulators often fail with `DNS_PROBE_FINISHED_BAD_CONFIG` on
+   `login.microsoftonline.com` (emulator DNS, not Entra). Cold-boot the AVD,
+   turn off VPN, or test on a phone.
+
+## Microsoft Entra redirect URIs
+
+The app uses scheme `smart-employee-app` and path `auth`.
+
+In the Entra app registration add these as **Mobile and desktop applications**
+redirect URIs (exact match), and enable **Allow public client flows**:
+
+| Environment | Redirect URI |
+| --- | --- |
+| Dev / production build | `smart-employee-app://auth` |
+| Expo Go (current SDK) | `expo://YOUR-LAN-IP:8081/--/auth` e.g. `expo://192.168.8.167:8081/--/auth` |
+| Older Expo Go | `exp://YOUR-LAN-IP:8081/--/auth` |
+
+The URI must match **character for character**, including `expo://` vs `exp://`.
+LAN IPs change; add the new one if your Wi-Fi address changes, or use a
+development build so only `smart-employee-app://auth` is needed.
+
+The sign-in screen shows the live redirect URI in development mode.
+
+Also add API permission `User.Read` (and `offline_access` via the OpenID scopes)
+with admin consent if your tenant requires it.
 
 ## Scripts
 
 - `npm start` / `npm run android` / `npm run ios` / `npm run web` — launch Expo
 - `npm test` — Jest (watch mode)
+- `npm test -- --watchAll=false` — single Jest run
 - `npm run lint` — Expo lint
 - `npx tsc --noEmit` — typecheck
 
 ## Auth flow
 
 Unauthenticated users land on the `(auth)/welcome` onboarding pager, then sign in with their
-Microsoft account in `(auth)/sign-in`. On success the access token is stored
-(`AsyncStorage`), the user is upserted via `app/(api)/user`, and the app redirects to
-`(root)/(tabs)/home`.
+Microsoft account in `(auth)/sign-in`. Tokens are stored in SecureStore when possible
+(AsyncStorage fallback on web / oversized JWTs). Expired access tokens are refreshed
+silently; if refresh fails the session is cleared and the user is sent back to welcome.
+On success the user is upserted via `app/(api)/user`, and the app redirects to
+`(root)/(tabs)/home`. API routes verify the Microsoft access token.

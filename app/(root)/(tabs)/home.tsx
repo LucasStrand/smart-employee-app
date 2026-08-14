@@ -20,6 +20,7 @@ import {
   manualMeta,
 } from "@/lib/manual";
 import { useBookmarks } from "@/lib/useBookmarks";
+import { ToDoList } from "@/types/type";
 
 import { Background } from "@/components/playbook/Background";
 import { CategoryCard } from "@/components/playbook/CategoryCard";
@@ -29,7 +30,6 @@ import { Pill } from "@/components/playbook/Pill";
 import { SearchBar } from "@/components/playbook/SearchBar";
 import { ScreenHeader } from "@/components/playbook/ScreenHeader";
 import { SectionHeader } from "@/components/playbook/SectionHeader";
-import { GlassIconButton } from "@/components/glass/GlassIconButton";
 import {
   getGridItemWidth,
   GRID_GAP,
@@ -49,30 +49,31 @@ const Home = () => {
   const { recent, isBookmarked, toggleBookmark } = useBookmarks();
 
   const [userName, setUserName] = useState<string | null>(null);
+  const [assignedLists, setAssignedLists] = useState<ToDoList[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    const loadUserFromGraph = async () => {
+    const load = async () => {
       try {
         const token = await getValidAccessToken();
         if (!token) {
           setLoading(false);
           return;
         }
-        const userData = await fetchAPI(
-          "/me",
-          { method: "GET" },
-          ApiType.GRAPH
-        );
+        const [userData, assigned] = await Promise.all([
+          fetchAPI("/me", { method: "GET" }, ApiType.GRAPH).catch(() => null),
+          fetchAPI("/assigned-todolist", { method: "GET" }).catch(() => []),
+        ]);
         setUserName(userData?.givenName ?? null);
+        setAssignedLists(Array.isArray(assigned) ? assigned : []);
       } catch {
         // 401 clears session + redirects via fetchAPI; other errors fall back quietly
       } finally {
         setLoading(false);
       }
     };
-    loadUserFromGraph();
+    load();
   }, []);
 
   const recentChapters = (
@@ -108,19 +109,7 @@ const Home = () => {
 
   return (
     <CollapsibleScreen
-      header={
-        <ScreenHeader
-          title="Hem"
-          trailing={
-            <GlassIconButton
-              accessibilityLabel="Notiser"
-              badged
-              icon="notifications-outline"
-              onPress={() => router.push("/(root)/(tabs)/profile")}
-            />
-          }
-        />
-      }
+      header={<ScreenHeader title="Hem" />}
       scrollProps={{
         contentContainerStyle: {
           paddingTop: 8,
@@ -240,6 +229,139 @@ const Home = () => {
                   )
               )}
             </View>
+          </View>
+
+          {/* Assigned work orders */}
+          <View style={{ paddingHorizontal: 20, marginTop: 30 }}>
+            <SectionHeader
+              title="Mina arbetsordrar"
+              actionLabel="Bläddra"
+              onActionPress={() => router.push("/(root)/browse-workorders")}
+            />
+            {assignedLists.length === 0 ? (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => router.push("/(root)/browse-workorders")}
+                style={{
+                  padding: 16,
+                  borderRadius: 18,
+                  backgroundColor: colors.surface,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <Text
+                  style={{
+                    color: colors.text,
+                    fontFamily: "Jakarta-Bold",
+                    fontSize: 15,
+                  }}
+                >
+                  Inga tilldelade ordrar
+                </Text>
+                <Text
+                  style={{
+                    color: colors.textMuted,
+                    fontFamily: "Jakarta",
+                    fontSize: 13,
+                    marginTop: 4,
+                  }}
+                >
+                  Bläddra och tilldela en checklista till dig själv.
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={{ gap: 10 }}>
+                {assignedLists.slice(0, 3).map((list) => {
+                  const raw = list.todos as unknown;
+                  const todos = Array.isArray(raw)
+                    ? raw
+                    : typeof raw === "string"
+                      ? (() => {
+                          try {
+                            const parsed = JSON.parse(raw);
+                            return Array.isArray(parsed) ? parsed : [];
+                          } catch {
+                            return [];
+                          }
+                        })()
+                      : [];
+                  const done = todos.filter((t) => t.completed).length;
+                  return (
+                    <TouchableOpacity
+                      key={list.id}
+                      activeOpacity={0.85}
+                      onPress={() => router.push("/(root)/browse-workorders")}
+                      style={{
+                        padding: 16,
+                        borderRadius: 18,
+                        backgroundColor: colors.surface,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                      }}
+                    >
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 12,
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: 42,
+                            height: 42,
+                            borderRadius: 12,
+                            backgroundColor: colors.brandGlow,
+                            borderWidth: 1,
+                            borderColor: colors.borderBrand,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Ionicons
+                            name="clipboard"
+                            size={18}
+                            color={colors.brand}
+                          />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={{
+                              color: colors.text,
+                              fontFamily: "Jakarta-Bold",
+                              fontSize: 15,
+                            }}
+                            numberOfLines={1}
+                          >
+                            {list.name || "Namnlös arbetsorder"}
+                          </Text>
+                          <Text
+                            style={{
+                              color: colors.textSubtle,
+                              fontFamily: "Jakarta",
+                              fontSize: 12,
+                              marginTop: 1,
+                            }}
+                            numberOfLines={1}
+                          >
+                            {list.belongs_to}
+                          </Text>
+                        </View>
+                        <Pill
+                          label={
+                            todos.length
+                              ? `${done}/${todos.length}`
+                              : "Checklista"
+                          }
+                          variant="outline"
+                        />
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
           </View>
 
           {/* Tools */}

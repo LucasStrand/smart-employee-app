@@ -42,6 +42,7 @@
           "origin": "https://smartteknik.nu/"
         }
       ],
+      "expo-secure-store",
       [
         "expo-splash-screen",
         {
